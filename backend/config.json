@@ -1,8 +1,9 @@
 {
-    "keepass_file_path": "C:/tmp/kpsisdb.kdbx",
-    "ad_server": "",
-    "ad_domain": "",
+    "keepass_file_path": "/app/data/kpsisdb.kdbx",
+    "ad_server": "ldap://srvmad01:389",
+    "ad_domain": "perezllorca.com",
     "admin_user": "admin",
     "admin_pass": "admin",
+    "ad_group": "",
     "secret_key": "your-secret-key-change-me"
 }

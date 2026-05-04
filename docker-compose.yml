@@ -1,0 +1,12 @@
+services:
+  keepass-viewer:
+    build: .
+    container_name: keepass_viewer
+    ports:
+      - "3007:3007"
+    volumes:
+      - ./data:/app/data
+      - ./backend/config.json:/app/backend/config.json
+    environment:
+      - TZ=Europe/Madrid
+    restart: always

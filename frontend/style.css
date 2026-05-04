@@ -49,12 +49,20 @@ body {
 
 .screen {
     height: 100vh;
+    width: 100%;
     display: flex;
+    transition: opacity 0.4s ease;
+    animation: fadeIn 0.6s ease-out;
+}
+
+#main-screen {
+    display: flex;
+    flex-direction: column;
+}
+
+#login-screen, #master-screen {
     justify-content: center;
     align-items: center;
-    transition: opacity 0.4s ease;
-    padding-top: 70px;
-    animation: fadeIn 0.6s ease-out;
 }
 
 .hidden {
@@ -113,14 +121,56 @@ header#app-header {
 /* Login */
 .login-card {
     width: 100%;
-    max-width: 420px;
-    padding: 48px;
+    max-width: 440px;
+    padding: 56px 48px;
     position: relative;
+    text-align: center;
 }
 
-.login-card h1 { margin-bottom: 12px; }
+.login-card h1 { 
+    margin-bottom: 8px;
+    font-size: 2.2rem;
+}
 
-/* Buttons */
+.login-card p {
+    margin-bottom: 40px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.input-group {
+    text-align: left;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+}
+
+input {
+    width: 100%;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+input:focus {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-glow);
+}
+
 .btn-primary {
     width: 100%;
     padding: 14px;
@@ -129,14 +179,55 @@ header#app-header {
     border: none;
     border-radius: 14px;
     font-weight: 600;
+    font-size: 1rem;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-top: 12px;
 }
 
 .btn-primary:hover {
     background: var(--primary-hover);
     transform: translateY(-2px);
     box-shadow: 0 10px 20px -5px var(--primary-glow);
+}
+
+.btn-secondary {
+    width: 100%;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.card-actions {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+}
+
+.text-link-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.3s ease;
+}
+
+.text-link-btn:hover {
+    color: var(--primary);
 }
 
 .icon-btn {
@@ -161,8 +252,16 @@ header#app-header {
 }
 
 /* Sidebar & Tree */
+main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    margin-top: 70px; /* Space for fixed header */
+}
+
 .sidebar {
     width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
     border-right: 1px solid var(--border);
     padding: 32px 20px;
     background: rgba(2, 6, 23, 0.4);
@@ -212,6 +311,9 @@ header#app-header {
     flex: 1;
     padding: 40px;
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
 }
 
 .entries-table-wrapper {
@@ -222,17 +324,34 @@ header#app-header {
     animation: fadeIn 0.8s ease-out;
 }
 
-table { width: 100%; border-collapse: collapse; }
+table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+th:nth-child(1) { width: 30%; } /* Title */
+th:nth-child(2) { width: 20%; } /* Username */
+th:nth-child(3) { width: 15%; } /* Password */
+th:nth-child(4) { width: 25%; } /* URL */
+th:nth-child(5) { width: 10%; } /* Actions */
 
 th {
-    padding: 18px 24px;
-    background: rgba(255, 255, 255, 0.02);
-    color: var(--text-dim);
-    font-size: 0.7rem;
+    padding: 20px 24px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.1em;
+    border-bottom: 2px solid var(--border);
+    text-align: left;
 }
 
 td {
@@ -254,8 +373,18 @@ tr:hover td { background: rgba(255, 255, 255, 0.01); }
 
 /* Modal */
 .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background: rgba(2, 6, 23, 0.85);
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(12px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease-out;
 }
 
 .modal-content {

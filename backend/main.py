@@ -1,6 +1,7 @@
 import os
 import json
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, Response
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import socketio
@@ -29,8 +30,16 @@ app.add_middleware(
 kp_manager = None
 kp_master_password = None # Cache password to check if new logins use the same one
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    payload = verify_token(token)
+async def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_scheme)):
+    # Try header first (via oauth2_scheme), then query param
+    final_token = token
+    if not final_token:
+        final_token = request.query_params.get("token")
+        
+    if not final_token:
+        raise HTTPException(status_code=401, detail="Missing token")
+        
+    payload = verify_token(final_token)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     return payload
@@ -143,6 +152,18 @@ async def delete_entry(uuid: str, current_user: dict = Depends(get_current_user)
         return {"status": "success"}
     raise HTTPException(status_code=404, detail="Entry not found")
 
+@app.get("/api/keepass/export")
+async def export_keepass(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Permisos insuficientes")
+    
+    config = load_config()
+    file_path = config.get("keepass_file_path")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        
+    return FileResponse(file_path, filename="keepass_backup.kdbx")
+
 @app.get("/api/config")
 async def get_config(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
@@ -150,17 +171,28 @@ async def get_config(current_user: dict = Depends(get_current_user)):
     return load_config()
 
 @app.post("/api/config")
-async def update_config(config: dict, current_user: dict = Depends(get_current_user)):
+async def update_config(new_config: dict, current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Encrypt sensitive fields
-    from auth import encrypt_value
-    if "admin_pass" in config:
-        config["admin_pass"] = encrypt_value(config["admin_pass"])
+    config = load_config()
     
-    with open(os.path.join(os.path.dirname(__file__), "config.json"), "w") as f:
-        json.dump(config, f, indent=4)
+    # Whitelist of keys allowed to be updated from the UI
+    allowed_keys = ["keepass_file_path", "ad_server", "ad_domain", "ad_group", "admin_user"]
+    
+    for key in allowed_keys:
+        if key in new_config:
+            config[key] = new_config[key]
+            
+    # Special handling for admin_pass (encrypt only if provided)
+    if "admin_pass" in new_config and new_config["admin_pass"]:
+        config["admin_pass"] = encrypt_value(new_config["admin_pass"])
+    
+    # Ensure secret_key is NEVER lost
+    if "secret_key" not in config:
+        config["secret_key"] = "your-secret-key-change-me"
+        
+    save_config(config)
     return {"status": "success"}
 
 # Serve Frontend

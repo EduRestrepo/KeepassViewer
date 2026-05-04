@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=1.2">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -22,8 +22,49 @@
             </div>
         </header>
 
-        <!-- ... screens ... -->
-        
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
+            <div class="glass-card login-card">
+                <div class="card-actions">
+                    <button id="config-btn-login" class="text-link-btn" title="Configuración"><i data-lucide="settings"></i> Configuración</button>
+                </div>
+                <h1>KeePass<span>Viewer</span></h1>
+                <p>Acceso restringido para el equipo de tecnología</p>
+                <form id="login-form">
+                    <div class="input-group">
+                        <label for="username">Usuario de Red</label>
+                        <input type="text" id="username" required placeholder="ej. jdoe">
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Contraseña</label>
+                        <input type="password" id="password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn-primary">Iniciar Sesión</button>
+                </form>
+                <div id="login-error" class="error-msg"></div>
+            </div>
+        </div>
+
+        <!-- Master Password Screen -->
+        <div id="master-screen" class="screen hidden">
+            <div class="glass-card login-card">
+                <div class="card-actions">
+                    <button id="config-btn-master" class="text-link-btn" title="Configuración"><i data-lucide="settings"></i> Configuración</button>
+                </div>
+                <h2>Archivo KeePass</h2>
+                <p>Introduce la contraseña maestra para desbloquear</p>
+                <form id="master-form">
+                    <div class="input-group">
+                        <label for="master-pass">Contraseña Maestra</label>
+                        <input type="password" id="master-pass" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="btn-primary">Desbloquear</button>
+                    <button type="button" id="logout-btn" class="btn-secondary">Cerrar Sesión</button>
+                </form>
+                <div id="master-error" class="error-msg"></div>
+            </div>
+        </div>
+
         <div id="main-screen" class="screen hidden">
             <main>
                 <aside class="sidebar">
@@ -73,7 +114,52 @@
         </div>
 
         <!-- Admin Modal -->
-        <!-- ... -->
+        <div id="admin-modal" class="modal hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:rgba(0,0,0,0.8); display:none; align-items:center; justify-content:center;">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2>Configuración del Sistema</h2>
+                    <button class="close-modal"><i data-lucide="x"></i></button>
+                </div>
+                <form id="config-form">
+                    <div class="input-group">
+                        <label>Ruta del Archivo .kdbx</label>
+                        <input type="text" id="conf-file-path" name="keepass_file_path" placeholder="C:/ruta/al/archivo.kdbx">
+                    </div>
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>Servidor AD (LDAP)</label>
+                            <input type="text" id="conf-ad-server" name="ad_server" placeholder="ldap://server:389">
+                        </div>
+                        <div class="input-group">
+                            <label>Dominio AD</label>
+                            <input type="text" id="conf-ad-domain" name="ad_domain" placeholder="DOMAIN">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Grupo AD Requerido</label>
+                        <input type="text" id="conf-ad-group" name="ad_group" placeholder="CN=KeePassUsers,OU=Groups,DC=domain,DC=com">
+                    </div>
+                    <div class="divider">Administración</div>
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>Usuario Admin</label>
+                            <input type="text" id="conf-admin-user" name="admin_user">
+                        </div>
+                        <div class="input-group">
+                            <label>Nueva Contraseña Admin</label>
+                            <input type="password" id="conf-admin-pass" name="admin_pass">
+                        </div>
+                    </div>
+                    <div class="button-row" style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px;">
+                        <button type="button" id="export-btn" class="btn-secondary" style="width: 100%;">
+                            <i data-lucide="download" style="width:16px; margin-right:8px; vertical-align: middle;"></i>
+                            Exportar Backup .kdbx
+                        </button>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Guardar Configuración</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <!-- Entry Modal -->
         <div id="entry-modal" class="modal hidden">
@@ -123,6 +209,6 @@
             </div>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script src="script.js?v=1.2"></script>
 </body>
 </html>

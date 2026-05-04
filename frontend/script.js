@@ -1,3 +1,9 @@
+console.log('--- KeePassViewer Script Loading ---');
+window.onerror = function(msg, url, line, col, error) {
+   console.error("Global Error: " + msg + " at " + url + ":" + line);
+   return false;
+};
+
 const API_URL = '';
 let currentUser = null;
 let entries = [];
@@ -5,6 +11,7 @@ let groups = [];
 let currentGroup = 'Root';
 let currentGroupUuid = null;
 let socket = null;
+let authToken = localStorage.getItem('authToken');
 
 // DOM Elements
 const loginScreen = document.getElementById('login-screen');
@@ -35,7 +42,9 @@ async function apiFetch(url, options = {}) {
         
         if (res.status === 401) {
             console.warn('Session expired or unauthorized');
-            logout();
+            if (authToken) {
+                logout();
+            }
             throw new Error('Sesión expirada');
         }
         
@@ -55,14 +64,34 @@ function logout() {
 
 // --- Initialization ---
 
+let idleTimer = null;
+const IDLE_TIME = 15 * 60 * 1000; // 15 minutes
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Check if we have a token to skip login screen (optional, but good)
     if (authToken) {
         showScreen('master');
     }
     initSocket();
     setupEventListeners();
+    resetIdleTimer();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 });
+
+function resetIdleTimer() {
+    if (idleTimer) clearTimeout(idleTimer);
+    if (authToken) {
+        idleTimer = setTimeout(() => {
+            console.log('Inactividad detectada. Bloqueando...');
+            logout();
+        }, IDLE_TIME);
+    }
+}
+
+// User interaction listeners to reset idle timer
+['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(evt => {
+    window.addEventListener(evt, resetIdleTimer, true);
+});
+
 
 function initSocket() {
     try {
@@ -79,127 +108,200 @@ function initSocket() {
 }
 
 function setupEventListeners() {
-    // Login
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = e.target.username.value;
-        const password = e.target.password.value;
-        
-        try {
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-            
-            if (res.ok) {
-                const data = await res.json();
-                currentUser = data.user;
-                authToken = data.access_token;
-                localStorage.setItem('authToken', authToken);
+    console.log('Setting up event listeners...');
+    try {
+        // Login
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = e.target.username.value;
+                const password = e.target.password.value;
                 
-                showScreen('master');
-                document.getElementById('display-user').innerText = currentUser.username;
-            } else {
-                showError('login', 'Credenciales inválidas');
-            }
-        } catch (err) {
-            showError('login', 'Error de conexión');
-        }
-    });
-
-    // Master Password
-    masterForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const password = e.target['master-pass'].value;
-        
-        try {
-            const res = await apiFetch('/api/keepass/open', {
-                method: 'POST',
-                body: JSON.stringify({ password })
+                try {
+                    const res = await fetch('/api/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    if (res.ok) {
+                        const data = await res.json();
+                        currentUser = data.user;
+                        authToken = data.access_token;
+                        localStorage.setItem('authToken', authToken);
+                        
+                        showScreen('master');
+                        document.getElementById('display-user').innerText = currentUser.username;
+                    } else {
+                        showError('login', 'Credenciales inválidas');
+                    }
+                } catch (err) {
+                    showError('login', 'Error de conexión');
+                }
             });
-            
-            if (res.ok) {
-                showScreen('main');
-                refreshData();
-            } else {
-                const errorData = await res.json();
-                showError('master', errorData.detail || 'Error al abrir el archivo');
-            }
-        } catch (err) {
-            showError('master', 'Error de conexión');
         }
-    });
 
-    // Entry Form
-    entryForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const uuid = document.getElementById('entry-uuid').value;
-        const data = {
-            title: document.getElementById('entry-title').value,
-            username: document.getElementById('entry-username').value,
-            password: document.getElementById('entry-password').value,
-            url: document.getElementById('entry-url').value,
-            notes: document.getElementById('entry-notes').value,
-            group: currentGroup
-        };
-
-        const method = uuid ? 'PUT' : 'POST';
-        const url = uuid ? `/api/keepass/entries/${uuid}` : '/api/keepass/entries';
-
-        const res = await apiFetch(url, {
-            method,
-            body: JSON.stringify(data)
-        });
-
-        if (res.ok) {
-            closeModals();
-            refreshData();
+        // Master Password
+        if (masterForm) {
+            masterForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const password = e.target['master-pass'].value;
+                
+                try {
+                    const res = await apiFetch('/api/keepass/open', {
+                        method: 'POST',
+                        body: JSON.stringify({ password })
+                    });
+                    
+                    if (res.ok) {
+                        showScreen('main');
+                        refreshData();
+                    } else {
+                        const errorData = await res.json();
+                        showError('master', errorData.detail || 'Error al abrir el archivo');
+                    }
+                } catch (err) {
+                    showError('master', 'Error de conexión');
+                }
+            });
         }
-    });
 
-    // Config Form
-    configForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const config = Object.fromEntries(formData.entries());
+        // Entry Form
+        if (entryForm) {
+            entryForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const uuid = document.getElementById('entry-uuid').value;
+                const data = {
+                    title: document.getElementById('entry-title').value,
+                    username: document.getElementById('entry-username').value,
+                    password: document.getElementById('entry-password').value,
+                    url: document.getElementById('entry-url').value,
+                    notes: document.getElementById('entry-notes').value,
+                    group: currentGroup
+                };
+
+                const method = uuid ? 'PUT' : 'POST';
+                const url = uuid ? `/api/keepass/entries/${uuid}` : '/api/keepass/entries';
+
+                const res = await apiFetch(url, {
+                    method,
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    closeModals();
+                    refreshData();
+                }
+            });
+        }
+
+        // Config Form
+        if (configForm) {
+            configForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const config = Object.fromEntries(formData.entries());
+                
+                const res = await apiFetch('/api/config', {
+                    method: 'POST',
+                    body: JSON.stringify(config)
+                });
+
+                if (res.ok) {
+                    closeModals();
+                    alert('✅ Configuración guardada correctamente.');
+                } else {
+                    try {
+                        const errorData = await res.json();
+                        alert('❌ Error al guardar: ' + (errorData.detail || 'Acceso denegado'));
+                    } catch (e) {
+                        alert('❌ Error al guardar: Sesión no autorizada. Por favor, inicia sesión como admin primero.');
+                    }
+                }
+            });
+        }
+
+        // Password strength & Generator
+        const passInput = document.getElementById('entry-password');
+        if (passInput) {
+            passInput.oninput = (e) => {
+                updatePasswordStrength(e.target.value);
+            };
+        }
+
+        const genBtn = document.getElementById('gen-pass-btn');
+        if (genBtn) {
+            genBtn.onclick = () => {
+                const pass = generatePassword();
+                document.getElementById('entry-password').value = pass;
+                updatePasswordStrength(pass);
+            };
+        }
+
+        // UI Buttons
+        const addEntryBtn = document.getElementById('add-entry-btn');
+        if (addEntryBtn) addEntryBtn.onclick = () => openEntryModal();
         
-        const res = await apiFetch('/api/config', {
-            method: 'POST',
-            body: JSON.stringify(config)
+        // Config Buttons
+        ['config-btn', 'config-btn-login', 'config-btn-master'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    openAdminModal();
+                };
+            }
         });
 
-        if (res.ok) {
-            closeModals();
-            alert('Configuración guardada.');
+        const lockBtn = document.getElementById('lock-btn');
+        if (lockBtn) lockBtn.onclick = () => logout();
+
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) logoutBtn.onclick = () => logout();
+
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn) {
+            exportBtn.onclick = () => {
+                const token = localStorage.getItem('authToken');
+                window.open(`/api/keepass/export?token=${token}`, '_blank');
+            };
         }
-    });
 
-    // UI Buttons
-    document.getElementById('add-entry-btn').onclick = () => openEntryModal();
-    
-    // Multiple config buttons
-    ['config-btn', 'config-btn-login', 'config-btn-master'].forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) btn.onclick = () => openAdminModal();
-    });
-    document.getElementById('lock-btn').onclick = () => logout();
-    document.getElementById('logout-btn').onclick = () => logout();
-    document.querySelectorAll('.close-modal').forEach(btn => btn.onclick = closeModals);
-    
-    document.getElementById('search-input').oninput = (e) => {
-        renderEntries(e.target.value);
-    };
+        document.querySelectorAll('.close-modal').forEach(btn => btn.onclick = closeModals);
+        
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.oninput = (e) => {
+                renderEntries(e.target.value);
+            };
+        }
 
-    document.getElementById('toggle-entry-pass').onclick = () => {
-        const input = document.getElementById('entry-password');
-        input.type = input.type === 'password' ? 'text' : 'password';
-    };
+        const togglePassBtn = document.getElementById('toggle-entry-pass');
+        if (togglePassBtn) {
+            togglePassBtn.onclick = () => {
+                const input = document.getElementById('entry-password');
+                const icon = document.querySelector('#toggle-entry-pass i');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    if (icon) icon.setAttribute('data-lucide', 'eye-off');
+                } else {
+                    input.type = 'password';
+                    if (icon) icon.setAttribute('data-lucide', 'eye');
+                }
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            };
+        }
 
-    document.getElementById('add-group-btn').onclick = () => {
-        const name = prompt('Nombre del nuevo grupo:');
-        if (name) addGroup(name);
-    };
+        const addGroupBtn = document.getElementById('add-group-btn');
+        if (addGroupBtn) {
+            addGroupBtn.onclick = () => {
+                const name = prompt('Nombre del nuevo grupo:');
+                if (name) addGroup(name);
+            };
+        }
+    } catch (err) {
+        console.error('Error during setupEventListeners:', err);
+    }
 }
 
 async function addGroup(name) {
@@ -230,48 +332,158 @@ async function refreshData() {
 }
 
 function renderGroups() {
-    groupList.innerHTML = '<li class="group-item active" onclick="setGroup(\'Root\')">Todas las entradas</li>';
-    groups.forEach(group => {
-        const li = document.createElement('li');
-        li.className = 'group-item';
-        li.innerText = group.name;
-        li.style.paddingLeft = `${(group.level * 15) + 16}px`;
-        li.onclick = () => setGroup(group.name, li, group.uuid);
-        groupList.appendChild(li);
-    });
-}
+    const container = document.getElementById('group-list');
+    container.innerHTML = '';
+    
+    if (!groups || !groups.name) return;
 
-function setGroup(name, el, uuid = null) {
-    currentGroup = name;
-    currentGroupUuid = uuid;
-    document.getElementById('current-group').innerText = name === 'Root' ? 'Todas las Entradas' : name;
-    document.querySelectorAll('.group-item').forEach(item => item.classList.remove('active'));
-    if (el) el.classList.add('active');
-    renderEntries();
+    function buildTree(group) {
+        const div = document.createElement('div');
+        div.className = 'tree-item';
+        
+        const row = document.createElement('div');
+        row.className = 'tree-row';
+        if (currentGroupUuid === group.uuid || (!currentGroupUuid && group.level === 0)) {
+            row.classList.add('active');
+        }
+        
+        row.style.paddingLeft = `${(group.level * 16) + 12}px`;
+        
+        const iconName = group.subgroups.length > 0 ? 'folder' : 'folder-keyhole';
+        row.innerHTML = `
+            <i data-lucide="${iconName}" class="tree-icon"></i>
+            <span>${group.name}</span>
+        `;
+        
+        row.onclick = () => {
+            currentGroup = group.name;
+            currentGroupUuid = group.uuid;
+            document.getElementById('current-group').innerText = group.name;
+            renderGroups();
+            renderEntries();
+        };
+        
+        div.appendChild(row);
+        group.subgroups.forEach(sub => div.appendChild(buildTree(sub)));
+        return div;
+    }
+
+    container.appendChild(buildTree(groups));
+    lucide.createIcons();
 }
 
 function renderEntries(filter = '') {
     const filtered = entries.filter(e => {
-        const matchesGroup = !currentGroupUuid || e.group_uuid === currentGroupUuid || currentGroup === 'Root';
-        const matchesSearch = e.title.toLowerCase().includes(filter.toLowerCase()) || 
-                             e.username.toLowerCase().includes(filter.toLowerCase());
-        return matchesGroup && matchesSearch;
+        const matchesGroup = !currentGroupUuid || e.group_uuid === currentGroupUuid;
+        const search = filter.toLowerCase();
+        return matchesGroup && (
+            e.title.toLowerCase().includes(search) || 
+            e.username.toLowerCase().includes(search) ||
+            (e.url && e.url.toLowerCase().includes(search)) ||
+            (e.notes && e.notes.toLowerCase().includes(search))
+        );
     });
 
     entriesBody.innerHTML = '';
     filtered.forEach(entry => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${entry.title}</td>
-            <td>${entry.username}</td>
-            <td class="pass-cell">••••••••</td>
-            <td>${entry.url}</td>
             <td>
-                <button class="small-btn" onclick="openEntryModal('${entry.uuid}')">Editar</button>
+                <div style="display:flex; align-items:center; gap:10px">
+                    <i data-lucide="key" class="tree-icon"></i>
+                    ${entry.title}
+                </div>
+            </td>
+            <td>
+                <span class="val-text">${entry.username}</span>
+                <button class="copy-btn" data-copy="${btoa(unescape(encodeURIComponent(entry.username)))}" title="Copiar usuario">
+                    <i data-lucide="copy" style="width:14px"></i>
+                </button>
+            </td>
+            <td class="pass-cell">
+                ••••••••
+                <button class="copy-btn" data-copy="${btoa(unescape(encodeURIComponent(entry.password)))}" title="Copiar contraseña">
+                    <i data-lucide="copy" style="width:14px"></i>
+                </button>
+            </td>
+            <td><a href="${entry.url}" target="_blank" style="color:var(--primary);text-decoration:none">${entry.url || ''}</a></td>
+            <td>
+                <button class="icon-btn" onclick="openEntryModal('${entry.uuid}')">
+                    <i data-lucide="edit-3"></i>
+                </button>
             </td>
         `;
+        
+        // Attach copy events safely
+        tr.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const encoded = btn.getAttribute('data-copy');
+                const decoded = decodeURIComponent(escape(atob(encoded)));
+                copyToClipboard(decoded);
+                
+                // Visual feedback
+                const icon = btn.querySelector('i');
+                const originalIcon = icon.getAttribute('data-lucide');
+                icon.setAttribute('data-lucide', 'check');
+                lucide.createIcons();
+                setTimeout(() => {
+                    icon.setAttribute('data-lucide', originalIcon);
+                    lucide.createIcons();
+                }, 2000);
+            };
+        });
+
         entriesBody.appendChild(tr);
     });
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// --- Utilities ---
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        console.log('Copied to clipboard');
+        // Clear clipboard after 30 seconds
+        setTimeout(() => {
+            navigator.clipboard.readText().then(current => {
+                if (current === text) {
+                    navigator.clipboard.writeText('');
+                    console.log('Clipboard cleared');
+                }
+            });
+        }, 30000);
+    });
+}
+
+function generatePassword(length = 16) {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
+    let retVal = "";
+    for (let i = 0, n = charset.length; i < length; ++i) {
+        retVal += charset.charAt(Math.floor(Math.random() * n));
+    }
+    return retVal;
+}
+
+function updatePasswordStrength(pass) {
+    const bar = document.getElementById('strength-bar');
+    if (!bar) return;
+    bar.className = 'strength-bar';
+    let strength = 0;
+    if (pass.length > 8) strength++;
+    if (/[A-Z]/.test(pass)) strength++;
+    if (/[0-9]/.test(pass)) strength++;
+    if (/[^A-Za-z0-9]/.test(pass)) strength++;
+
+    if (strength <= 1) {
+        bar.classList.add('weak');
+        bar.style.width = '25%';
+    } else if (strength <= 3) {
+        bar.classList.add('medium');
+        bar.style.width = '60%';
+    } else {
+        bar.classList.add('strong');
+        bar.style.width = '100%';
+    }
 }
 
 // --- UI Helpers ---
@@ -281,7 +493,6 @@ function showScreen(id) {
     screens.forEach(s => s.classList.add('hidden'));
     document.getElementById(`${id}-screen`).classList.remove('hidden');
     
-    // Header logic
     const header = document.getElementById('app-header');
     const lockBtn = document.getElementById('lock-btn');
     
@@ -296,6 +507,7 @@ function showScreen(id) {
     } else {
         lockBtn.classList.add('hidden');
     }
+    lucide.createIcons();
 }
 
 function showError(screen, msg) {
@@ -309,6 +521,7 @@ function openEntryModal(uuid = null) {
     const deleteBtn = document.getElementById('delete-entry-btn');
     entryForm.reset();
     document.getElementById('entry-uuid').value = uuid || '';
+    document.getElementById('strength-bar').style.width = '0%';
 
     if (uuid) {
         const entry = entries.find(e => e.uuid === uuid);
@@ -318,6 +531,7 @@ function openEntryModal(uuid = null) {
         document.getElementById('entry-password').value = entry.password;
         document.getElementById('entry-url').value = entry.url;
         document.getElementById('entry-notes').value = entry.notes;
+        updatePasswordStrength(entry.password);
         deleteBtn.classList.remove('hidden');
         deleteBtn.onclick = () => deleteEntry(uuid);
     } else {
@@ -325,7 +539,9 @@ function openEntryModal(uuid = null) {
         deleteBtn.classList.add('hidden');
     }
     
+    entryModal.style.display = 'flex';
     entryModal.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 async function deleteEntry(uuid) {
@@ -339,30 +555,44 @@ async function deleteEntry(uuid) {
 }
 
 async function openAdminModal() {
-    // If logged in, check if admin. If not logged in, allow for initial setup.
     if (currentUser && currentUser.role !== 'admin') {
         alert('Solo el administrador puede acceder a la configuración.');
         return;
     }
     
-    try {
-        const res = await apiFetch('/api/config');
-        if (res.ok) {
-            const config = await res.json();
-            document.getElementById('conf-file-path').value = config.keepass_file_path || '';
-            document.getElementById('conf-ad-server').value = config.ad_server || '';
-            document.getElementById('conf-ad-domain').value = config.ad_domain || '';
-            document.getElementById('conf-admin-user').value = config.admin_user || '';
-            document.getElementById('conf-admin-pass').value = config.admin_pass || '';
+    // Clear fields first
+    document.getElementById('conf-file-path').value = '';
+    document.getElementById('conf-ad-server').value = '';
+    document.getElementById('conf-ad-domain').value = '';
+    document.getElementById('conf-admin-user').value = '';
+    document.getElementById('conf-admin-pass').value = '';
+
+    if (authToken) {
+        try {
+            const res = await apiFetch('/api/config');
+            if (res.ok) {
+                const config = await res.json();
+                document.getElementById('conf-file-path').value = config.keepass_file_path || '';
+                document.getElementById('conf-ad-server').value = config.ad_server || '';
+                document.getElementById('conf-ad-domain').value = config.ad_domain || '';
+                document.getElementById('conf-ad-group').value = config.ad_group || '';
+                document.getElementById('conf-admin-user').value = config.admin_user || '';
+                document.getElementById('conf-admin-pass').value = '';
+            }
+        } catch (e) {
+            console.error('Error fetching config:', e);
         }
-    } catch (e) {
-        console.error('Error opening admin modal:', e);
     }
     
+    console.log('Opening Admin Modal...');
+    adminModal.style.display = 'flex';
     adminModal.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function closeModals() {
+    entryModal.style.display = 'none';
+    adminModal.style.display = 'none';
     entryModal.classList.add('hidden');
     adminModal.classList.add('hidden');
 }
