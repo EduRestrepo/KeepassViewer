@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KeePass Web Viewer | Team Tech</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div id="app">
+        <header id="app-header" class="hidden">
+            <div class="logo">KeePass<span>Viewer</span></div>
+            <div class="user-info">
+                <span id="display-user">No autenticado</span>
+                <button id="config-btn" class="icon-btn" title="Configuración"><i data-lucide="settings"></i></button>
+                <button id="lock-btn" class="icon-btn hidden" title="Cerrar Sesión"><i data-lucide="log-out"></i></button>
+            </div>
+        </header>
+
+        <!-- ... screens ... -->
+        
+        <div id="main-screen" class="screen hidden">
+            <main>
+                <aside class="sidebar">
+                    <div class="sidebar-header">
+                        <h3>Navegación</h3>
+                        <button id="add-group-btn" class="icon-btn small"><i data-lucide="folder-plus"></i></button>
+                    </div>
+                    <div id="group-list" class="tree-container">
+                        <!-- Groups will be injected here -->
+                    </div>
+                </aside>
+                
+                <section class="content">
+                    <div class="content-header">
+                        <div class="title-area">
+                            <h2 id="current-group">Todas las Entradas</h2>
+                        </div>
+                        <div class="actions">
+                            <div class="search-wrapper">
+                                <i data-lucide="search" class="search-icon"></i>
+                                <input type="text" id="search-input" placeholder="Buscar por título, usuario, url...">
+                            </div>
+                            <button id="add-entry-btn" class="btn-primary">
+                                <i data-lucide="plus"></i> Nueva Entrada
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="entries-table-wrapper">
+                        <table id="entries-table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Usuario</th>
+                                    <th>Contraseña</th>
+                                    <th>URL</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="entries-body">
+                                <!-- Entries will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Admin Modal -->
+        <!-- ... -->
+
+        <!-- Entry Modal -->
+        <div id="entry-modal" class="modal hidden">
+            <div class="modal-content glass-card">
+                <div class="modal-header">
+                    <h2 id="entry-modal-title">Nueva Entrada</h2>
+                    <button class="close-modal"><i data-lucide="x"></i></button>
+                </div>
+                <form id="entry-form">
+                    <input type="hidden" id="entry-uuid">
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>Título</label>
+                            <input type="text" id="entry-title" required>
+                        </div>
+                        <div class="input-group">
+                            <label>URL</label>
+                            <input type="text" id="entry-url">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="input-group">
+                            <label>Usuario</label>
+                            <input type="text" id="entry-username" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Contraseña</label>
+                            <div class="pass-wrapper">
+                                <input type="password" id="entry-password" required>
+                                <button type="button" id="toggle-entry-pass" class="toggle-btn"><i data-lucide="eye"></i></button>
+                            </div>
+                            <div class="strength-meter">
+                                <div id="strength-bar" class="strength-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Notas</label>
+                        <textarea id="entry-notes"></textarea>
+                    </div>
+                    <div class="button-row">
+                        <button type="submit" class="btn-primary">Guardar Entrada</button>
+                        <button type="button" id="delete-entry-btn" class="btn-danger hidden">Eliminar</button>
+                        <button type="button" id="gen-pass-btn" class="btn-secondary">Generar Clave</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

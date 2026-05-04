@@ -1,0 +1,8 @@
+{
+    "keepass_file_path": "C:/tmp/kpsisdb.kdbx",
+    "ad_server": "",
+    "ad_domain": "",
+    "admin_user": "admin",
+    "admin_pass": "admin",
+    "secret_key": "your-secret-key-change-me"
+}
