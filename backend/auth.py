@@ -7,6 +7,11 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from cryptography.fernet import Fernet
 import base64
+import requests
+try:
+    import msal
+except ImportError:
+    msal = None
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -106,5 +111,54 @@ def authenticate_user(username, password):
             return {"username": username, "role": "user"}
     except Exception as e:
         print(f"AD Auth error: {e}")
+
+    # Entra ID (Azure) Authentication
+    tenant_id = config.get("azure_tenant_id")
+    client_id = config.get("azure_client_id")
+    client_secret = decrypt_value(config.get("azure_client_secret"))
+    group_id = config.get("azure_group_id")
+
+    if msal and tenant_id and client_id:
+        try:
+            authority = f"https://login.microsoftonline.com/{tenant_id}"
+            
+            if client_secret:
+                app = msal.ConfidentialClientApplication(client_id, client_credential=client_secret, authority=authority)
+            else:
+                app = msal.PublicClientApplication(client_id, authority=authority)
+
+            # Try ROPC flow
+            # Username should be the full email if possible, or we try to append domain if missing
+            full_username = username
+            if "@" not in username and config.get("ad_domain"):
+                full_username = f"{username}@{config.get('ad_domain')}"
+            
+            result = app.acquire_token_by_username_password(full_username, password, scopes=["User.Read"])
+            
+            if "access_token" in result:
+                # User authenticated. Check group membership.
+                if group_id:
+                    headers = {'Authorization': f'Bearer {result["access_token"]}'}
+                    # Note: /me/memberOf only returns groups the user is a DIRECT member of.
+                    # For nested groups, /me/getMemberGroups might be needed.
+                    graph_res = requests.get('https://graph.microsoftonline.com/v1.0/me/memberOf', headers=headers)
+                    if graph_res.ok:
+                        groups = graph_res.json().get('value', [])
+                        # Check by ID (Object ID)
+                        is_member = any(g.get('id') == group_id or g.get('displayName') == group_id for g in groups)
+                        
+                        if not is_member:
+                            # Try check by name if ID didn't match (user might have put name in group_id field)
+                            is_member = any(g.get('displayName') == config.get("ad_group") for g in groups)
+                            
+                        if not is_member:
+                            print(f"User {username} is not member of Entra group {group_id}")
+                            return None
+                            
+                return {"username": username, "role": "user"}
+            else:
+                print(f"Entra ID Auth failed: {result.get('error_description')}")
+        except Exception as e:
+            print(f"Entra ID Auth exception: {e}")
     
     return None

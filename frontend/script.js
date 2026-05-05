@@ -12,6 +12,12 @@ let currentGroup = 'Root';
 let currentGroupUuid = null;
 let socket = null;
 let authToken = localStorage.getItem('authToken');
+try {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) currentUser = JSON.parse(savedUser);
+} catch (e) {
+    console.error('Error parsing saved user:', e);
+}
 
 // DOM Elements
 const loginScreen = document.getElementById('login-screen');
@@ -57,6 +63,7 @@ async function apiFetch(url, options = {}) {
 
 function logout() {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
     authToken = null;
     currentUser = null;
     location.reload();
@@ -70,6 +77,12 @@ const IDLE_TIME = 15 * 60 * 1000; // 15 minutes
 document.addEventListener('DOMContentLoaded', () => {
     if (authToken) {
         showScreen('master');
+        if (currentUser) {
+            const displayUser = document.getElementById('display-user');
+            if (displayUser) displayUser.innerText = currentUser.username;
+        }
+    } else {
+        showScreen('login');
     }
     initSocket();
     setupEventListeners();
@@ -129,6 +142,7 @@ function setupEventListeners() {
                         currentUser = data.user;
                         authToken = data.access_token;
                         localStorage.setItem('authToken', authToken);
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
                         
                         showScreen('master');
                         document.getElementById('display-user').innerText = currentUser.username;
@@ -507,6 +521,30 @@ function showScreen(id) {
     } else {
         lockBtn.classList.add('hidden');
     }
+
+    // Admin only config buttons - Aggressive visibility toggle
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.username === 'admin');
+    
+    document.querySelectorAll('[id^="config-btn"]').forEach(btn => {
+        if (isAdmin && btn.id !== 'config-btn-login') {
+            btn.classList.remove('hidden');
+            btn.style.setProperty('display', 'flex', 'important');
+        } else {
+            btn.classList.add('hidden');
+            btn.style.setProperty('display', 'none', 'important');
+        }
+    });
+
+    const logoSpan = document.querySelector('.logo span');
+    if (logoSpan) {
+        logoSpan.style.setProperty('color', isAdmin ? '#fbbf24' : 'var(--primary)', 'important');
+    }
+
+    const displayUser = document.getElementById('display-user');
+    if (displayUser && currentUser) {
+        displayUser.innerText = currentUser.username + (isAdmin ? ' (Admin)' : '');
+    }
+
     lucide.createIcons();
 }
 
@@ -555,7 +593,8 @@ async function deleteEntry(uuid) {
 }
 
 async function openAdminModal() {
-    if (currentUser && currentUser.role !== 'admin') {
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.username === 'admin');
+    if (!isAdmin) {
         alert('Solo el administrador puede acceder a la configuración.');
         return;
     }
@@ -576,6 +615,10 @@ async function openAdminModal() {
                 document.getElementById('conf-ad-server').value = config.ad_server || '';
                 document.getElementById('conf-ad-domain').value = config.ad_domain || '';
                 document.getElementById('conf-ad-group').value = config.ad_group || '';
+                document.getElementById('conf-azure-tenant').value = config.azure_tenant_id || '';
+                document.getElementById('conf-azure-client').value = config.azure_client_id || '';
+                document.getElementById('conf-azure-secret').value = '';
+                document.getElementById('conf-azure-group').value = config.azure_group_id || '';
                 document.getElementById('conf-admin-user').value = config.admin_user || '';
                 document.getElementById('conf-admin-pass').value = '';
             }

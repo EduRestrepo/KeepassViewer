@@ -4,6 +4,10 @@
     "ad_domain": "perezllorca.com",
     "admin_user": "admin",
     "admin_pass": "admin",
-    "ad_group": "",
+    "ad_group": "MST_IT_Infraestructura_Operaciones",
+    "azure_tenant_id": "",
+    "azure_client_id": "",
+    "azure_client_secret": "",
+    "azure_group_id": "b6f492a4-a9b2-405f-8a5b-ec7fb5642416",
     "secret_key": "your-secret-key-change-me"
 }

@@ -178,15 +178,21 @@ async def update_config(new_config: dict, current_user: dict = Depends(get_curre
     config = load_config()
     
     # Whitelist of keys allowed to be updated from the UI
-    allowed_keys = ["keepass_file_path", "ad_server", "ad_domain", "ad_group", "admin_user"]
+    allowed_keys = [
+        "keepass_file_path", "ad_server", "ad_domain", "ad_group", 
+        "admin_user", "azure_tenant_id", "azure_client_id", "azure_group_id"
+    ]
     
     for key in allowed_keys:
         if key in new_config:
             config[key] = new_config[key]
             
-    # Special handling for admin_pass (encrypt only if provided)
+    # Special handling for secrets (encrypt only if provided)
     if "admin_pass" in new_config and new_config["admin_pass"]:
         config["admin_pass"] = encrypt_value(new_config["admin_pass"])
+        
+    if "azure_client_secret" in new_config and new_config["azure_client_secret"]:
+        config["azure_client_secret"] = encrypt_value(new_config["azure_client_secret"])
     
     # Ensure secret_key is NEVER lost
     if "secret_key" not in config:

@@ -7,3 +7,5 @@ passlib[argon2]
 ldap3
 cryptography
 python-multipart
+msal
+requests
