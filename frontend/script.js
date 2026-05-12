@@ -313,6 +313,89 @@ function setupEventListeners() {
                 if (name) addGroup(name);
             };
         }
+
+        // AD Test Button
+        const testAdBtn = document.getElementById('test-ad-btn');
+        if (testAdBtn) {
+            testAdBtn.onclick = async () => {
+                const ad_server = document.getElementById('conf-ad-server').value;
+                const ad_domain = document.getElementById('conf-ad-domain').value;
+                const ad_group = document.getElementById('conf-ad-group').value;
+                const test_user = document.getElementById('test-ad-user').value;
+                const test_pass = document.getElementById('test-ad-pass').value;
+                const resultDiv = document.getElementById('test-ad-result');
+
+                if (!ad_server || !ad_domain || !test_user || !test_pass) {
+                    alert('Por favor, rellena los campos de AD y los de prueba.');
+                    return;
+                }
+
+                testAdBtn.disabled = true;
+                testAdBtn.innerHTML = '<i data-lucide="loader" class="spin" style="width:16px; margin-right:8px; vertical-align:middle"></i> Probando...';
+                lucide.createIcons();
+                
+                resultDiv.style.display = 'none';
+
+                try {
+                    const res = await apiFetch('/api/config/test-ad', {
+                        method: 'POST',
+                        body: JSON.stringify({ ad_server, ad_domain, ad_group, test_user, test_pass })
+                    });
+                    
+                    const data = await res.json();
+                    resultDiv.innerText = data.message;
+                    resultDiv.style.display = 'block';
+                    
+                    if (data.status === 'success') {
+                        resultDiv.style.background = 'rgba(34,197,94,0.2)';
+                        resultDiv.style.color = '#4ade80';
+                        resultDiv.style.border = '1px solid rgba(34,197,94,0.3)';
+                    } else if (data.status === 'warning') {
+                        resultDiv.style.background = 'rgba(234,179,8,0.2)';
+                        resultDiv.style.color = '#fbbf24';
+                        resultDiv.style.border = '1px solid rgba(234,179,8,0.3)';
+                    } else {
+                        resultDiv.style.background = 'rgba(239,68,68,0.2)';
+                        resultDiv.style.color = '#f87171';
+                        resultDiv.style.border = '1px solid rgba(239,68,68,0.3)';
+                    }
+                } catch (err) {
+                    resultDiv.innerText = 'Error de comunicación con el servidor.';
+                    resultDiv.style.display = 'block';
+                    resultDiv.style.background = 'rgba(239,68,68,0.2)';
+                    resultDiv.style.color = '#f87171';
+                } finally {
+                    testAdBtn.disabled = false;
+                    testAdBtn.innerHTML = '<i data-lucide="activity" style="width:16px; margin-right:8px; vertical-align:middle"></i> Comprobar Conexión Local';
+                    lucide.createIcons();
+                }
+            };
+        }
+
+        // Tab Switching Logic
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = btn.getAttribute('data-tab');
+                console.log('Switching to tab:', targetId);
+                
+                // Update buttons
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Update panes
+                document.querySelectorAll('.tab-pane').forEach(p => {
+                    p.classList.remove('active');
+                });
+                
+                const targetPane = document.getElementById(targetId);
+                if (targetPane) {
+                    targetPane.classList.add('active');
+                } else {
+                    console.error('Tab pane not found:', targetId);
+                }
+            });
+        });
     } catch (err) {
         console.error('Error during setupEventListeners:', err);
     }
@@ -628,6 +711,13 @@ async function openAdminModal() {
     }
     
     console.log('Opening Admin Modal...');
+    
+    // Reset to first tab
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.querySelector('.tab-btn[data-tab="tab-general"]').classList.add('active');
+    document.getElementById('tab-general').classList.add('active');
+
     adminModal.style.display = 'flex';
     adminModal.classList.remove('hidden');
     if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -639,3 +729,46 @@ function closeModals() {
     entryModal.classList.add('hidden');
     adminModal.classList.add('hidden');
 }
+
+// --- Easter Egg Logic ---
+let titleClicks = 0;
+function triggerEasterEgg() {
+    titleClicks++;
+    console.log('Title clicks:', titleClicks);
+    if (titleClicks >= 7) {
+        titleClicks = 0;
+        const container = document.getElementById('easter-egg-container');
+        if (!container) return;
+        
+        container.classList.remove('hidden');
+        container.innerHTML = '<div class="hacked-text">HACKED</div>';
+        
+        // Create particles
+        for (let i = 0; i < 50; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 100 + Math.random() * 500;
+            p.style.setProperty('--x', `${Math.cos(angle) * dist}px`);
+            p.style.setProperty('--y', `${Math.sin(angle) * dist}px`);
+            // Random start position near center
+            p.style.left = '50%';
+            p.style.top = '50%';
+            container.appendChild(p);
+        }
+        
+        // Hide after 3 seconds
+        setTimeout(() => {
+            container.classList.add('hidden');
+            container.innerHTML = '';
+        }, 3000);
+    }
+}
+
+// Global click listener for the specific IDs
+document.addEventListener('click', (e) => {
+    const target = e.target.closest('#app-title, #app-title-main');
+    if (target) {
+        triggerEasterEgg();
+    }
+}, { passive: true });

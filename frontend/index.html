@@ -7,14 +7,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=1.6">
+    <link rel="stylesheet" href="style.css?v=2.0">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div id="app">
         <header id="app-header" class="hidden">
-            <div class="logo">KeePass<span>Viewer</span></div>
+            <div class="logo" id="app-title-main" style="cursor:pointer; user-select:none">
+                KeePass<span>Viewer</span>
+                <div style="font-size: 0.6rem; color: var(--text-dim); font-weight: 400; margin-top: -3px; letter-spacing: 0;">By Eduardo Restrepo | v2.0</div>
+            </div>
             <div class="user-info">
                 <span id="display-user">No autenticado</span>
                 <button id="config-btn" class="icon-btn hidden" title="Configuración"><i data-lucide="settings"></i></button>
@@ -28,7 +31,10 @@
                 <div class="card-actions">
                     <button id="config-btn-login" class="text-link-btn hidden" title="Configuración"><i data-lucide="settings"></i> Configuración</button>
                 </div>
-                <h1>KeePass<span>Viewer</span></h1>
+                <div class="logo" id="app-title" style="cursor:pointer; user-select:none">
+                    KeePass <span>Web Viewer</span>
+                    <div style="font-size: 0.65rem; color: var(--text-dim); font-weight: 400; margin-top: -5px;">By Eduardo Restrepo | v2.0</div>
+                </div>
                 <p>Acceso restringido para el equipo de tecnología</p>
                 <form id="login-form">
                     <div class="input-group">
@@ -126,85 +132,115 @@
                     <button class="close-modal icon-btn"><i data-lucide="x"></i></button>
                 </div>
                 
+                <div class="modal-tabs">
+                    <button type="button" class="tab-btn active" data-tab="tab-general">General</button>
+                    <button type="button" class="tab-btn" data-tab="tab-ad">LDAP / AD</button>
+                    <button type="button" class="tab-btn" data-tab="tab-azure">Entra ID</button>
+                    <button type="button" class="tab-btn" data-tab="tab-system">Sistema</button>
+                </div>
+
                 <div class="modal-body" style="padding: 40px; overflow-y: auto; flex: 1;">
                     <form id="config-form">
-                        <section class="config-section">
-                            <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
-                                <i data-lucide="database" style="width:18px"></i> Base de Datos KeePass
-                            </h3>
-                            <div class="input-group">
-                                <label>Ruta del Archivo .kdbx</label>
-                                <input type="text" id="conf-file-path" name="keepass_file_path" placeholder="C:/ruta/al/archivo.kdbx">
-                            </div>
-                        </section>
+                        <!-- Tab General -->
+                        <div id="tab-general" class="tab-pane active">
+                            <section class="config-section">
+                                <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
+                                    <i data-lucide="database" style="width:18px"></i> Base de Datos KeePass
+                                </h3>
+                                <div class="input-group">
+                                    <label>Ruta del Archivo .kdbx</label>
+                                    <input type="text" id="conf-file-path" name="keepass_file_path" placeholder="C:/ruta/al/archivo.kdbx">
+                                </div>
+                            </section>
+                        </div>
 
-                        <div class="divider" style="margin: 30px 0;"></div>
+                        <!-- Tab AD -->
+                        <div id="tab-ad" class="tab-pane">
+                            <section class="config-section">
+                                <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
+                                    <i data-lucide="network" style="width:18px"></i> Autenticación Local (AD/LDAP)
+                                </h3>
+                                <div class="grid-2">
+                                    <div class="input-group">
+                                        <label>Servidor AD (LDAP)</label>
+                                        <input type="text" id="conf-ad-server" name="ad_server" placeholder="ldap://server:389">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Dominio AD</label>
+                                        <input type="text" id="conf-ad-domain" name="ad_domain" placeholder="DOMAIN">
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label>Grupo AD Requerido (Nombre o DN)</label>
+                                    <input type="text" id="conf-ad-group" name="ad_group" placeholder="CN=KeePassUsers,OU=Groups,DC=domain,DC=com">
+                                </div>
+                                <div class="test-config-box" style="margin-top:20px; padding:20px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--border);">
+                                    <h4 style="margin:0 0 15px 0; font-size:0.9rem; color:var(--text-dim)">Probar Configuración AD</h4>
+                                    <div class="grid-2">
+                                        <div class="input-group">
+                                            <label>Usuario de prueba</label>
+                                            <input type="text" id="test-ad-user" placeholder="usuario">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Contraseña de prueba</label>
+                                            <input type="password" id="test-ad-pass" placeholder="••••••••">
+                                        </div>
+                                    </div>
+                                    <button type="button" id="test-ad-btn" class="btn-secondary" style="width:100%; margin-top:10px">
+                                        <i data-lucide="activity" style="width:16px; margin-right:8px; vertical-align:middle"></i> Comprobar Conexión Local
+                                    </button>
+                                    <div id="test-ad-result" style="margin-top:10px; font-size:0.85rem; padding:10px; border-radius:8px; display:none"></div>
+                                </div>
+                            </section>
+                        </div>
 
-                        <section class="config-section">
-                            <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
-                                <i data-lucide="network" style="width:18px"></i> Autenticación Local (AD/LDAP)
-                            </h3>
-                            <div class="grid-2">
-                                <div class="input-group">
-                                    <label>Servidor AD (LDAP)</label>
-                                    <input type="text" id="conf-ad-server" name="ad_server" placeholder="ldap://server:389">
+                        <!-- Tab Azure -->
+                        <div id="tab-azure" class="tab-pane">
+                            <section class="config-section">
+                                <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
+                                    <i data-lucide="cloud" style="width:18px"></i> Microsoft Entra ID (Azure AD)
+                                </h3>
+                                <div class="grid-2">
+                                    <div class="input-group">
+                                        <label>Tenant ID</label>
+                                        <input type="text" id="conf-azure-tenant" name="azure_tenant_id" placeholder="0000-0000-0000-0000">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Client ID</label>
+                                        <input type="text" id="conf-azure-client" name="azure_client_id" placeholder="0000-0000-0000-0000">
+                                    </div>
                                 </div>
-                                <div class="input-group">
-                                    <label>Dominio AD</label>
-                                    <input type="text" id="conf-ad-domain" name="ad_domain" placeholder="DOMAIN">
+                                <div class="grid-2">
+                                    <div class="input-group">
+                                        <label>Client Secret</label>
+                                        <input type="password" id="conf-azure-secret" name="azure_client_secret" placeholder="••••••••">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Entra Group ID (Object ID)</label>
+                                        <input type="text" id="conf-azure-group" name="azure_group_id" placeholder="b6f492a4-a9b2-405f-8a5b-ec7fb5642416">
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="input-group">
-                                <label>Grupo AD Requerido (Nombre o DN)</label>
-                                <input type="text" id="conf-ad-group" name="ad_group" placeholder="CN=KeePassUsers,OU=Groups,DC=domain,DC=com">
-                            </div>
-                        </section>
+                            </section>
+                        </div>
 
-                        <div class="divider" style="margin: 30px 0;"></div>
-
-                        <section class="config-section">
-                            <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
-                                <i data-lucide="cloud" style="width:18px"></i> Microsoft Entra ID (Azure AD)
-                            </h3>
-                            <div class="grid-2">
-                                <div class="input-group">
-                                    <label>Tenant ID</label>
-                                    <input type="text" id="conf-azure-tenant" name="azure_tenant_id" placeholder="0000-0000-0000-0000">
+                        <!-- Tab System -->
+                        <div id="tab-system" class="tab-pane">
+                            <section class="config-section">
+                                <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
+                                    <i data-lucide="shield-check" style="width:18px"></i> Administración del Sistema
+                                </h3>
+                                <div class="grid-2">
+                                    <div class="input-group">
+                                        <label>Usuario Admin</label>
+                                        <input type="text" id="conf-admin-user" name="admin_user">
+                                    </div>
+                                    <div class="input-group">
+                                        <label>Nueva Contraseña Admin</label>
+                                        <input type="password" id="conf-admin-pass" name="admin_pass">
+                                    </div>
                                 </div>
-                                <div class="input-group">
-                                    <label>Client ID</label>
-                                    <input type="text" id="conf-azure-client" name="azure_client_id" placeholder="0000-0000-0000-0000">
-                                </div>
-                            </div>
-                            <div class="grid-2">
-                                <div class="input-group">
-                                    <label>Client Secret</label>
-                                    <input type="password" id="conf-azure-secret" name="azure_client_secret" placeholder="••••••••">
-                                </div>
-                                <div class="input-group">
-                                    <label>Entra Group ID (Object ID)</label>
-                                    <input type="text" id="conf-azure-group" name="azure_group_id" placeholder="b6f492a4-a9b2-405f-8a5b-ec7fb5642416">
-                                </div>
-                            </div>
-                        </section>
-
-                        <div class="divider" style="margin: 30px 0;"></div>
-
-                        <section class="config-section">
-                            <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
-                                <i data-lucide="shield-check" style="width:18px"></i> Administración del Sistema
-                            </h3>
-                            <div class="grid-2">
-                                <div class="input-group">
-                                    <label>Usuario Admin</label>
-                                    <input type="text" id="conf-admin-user" name="admin_user">
-                                </div>
-                                <div class="input-group">
-                                    <label>Nueva Contraseña Admin</label>
-                                    <input type="password" id="conf-admin-pass" name="admin_pass">
-                                </div>
-                            </div>
-                        </section>
+                            </section>
+                        </div>
                     </form>
                 </div>
 
@@ -265,6 +301,7 @@
             </div>
         </div>
     </div>
-    <script src="script.js?v=1.6"></script>
+    <div id="easter-egg-container" class="hidden"></div>
+    <script src="script.js?v=2.0"></script>
 </body>
 </html>

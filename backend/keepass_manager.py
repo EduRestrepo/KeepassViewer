@@ -2,6 +2,7 @@ import os
 from pykeepass import PyKeePass
 from pykeepass.exceptions import CredentialsError
 import threading
+import uuid
 
 class KeePassManager:
     def __init__(self, file_path, password=None):
@@ -22,40 +23,42 @@ class KeePassManager:
             return False
 
     def get_entries(self):
-        if not self.kp:
-            return []
-        
-        entries = []
-        for entry in self.kp.entries:
-            entries.append({
-                "uuid": str(entry.uuid),
-                "title": entry.title,
-                "username": entry.username,
-                "password": entry.password,
-                "url": entry.url,
-                "notes": entry.notes,
-                "icon": entry.icon,
-                "group": entry.group.name if entry.group else "Root",
-                "group_uuid": str(entry.group.uuid) if entry.group else None
-            })
-        return entries
+        with self.lock:
+            if not self.kp:
+                return []
+            
+            entries = []
+            for entry in self.kp.entries:
+                entries.append({
+                    "uuid": str(entry.uuid),
+                    "title": entry.title,
+                    "username": entry.username,
+                    "password": entry.password,
+                    "url": entry.url,
+                    "notes": entry.notes,
+                    "icon": entry.icon,
+                    "group": entry.group.name if entry.group else "Root",
+                    "group_uuid": str(entry.group.uuid) if entry.group else None
+                })
+            return entries
 
     def get_groups(self):
-        if not self.kp:
-            return []
-        
-        def recurse_groups(group, level=0):
-            result = {
-                "uuid": str(group.uuid),
-                "name": group.name,
-                "level": level,
-                "icon": group.icon,
-                "subgroups": [recurse_groups(child, level + 1) for child in group.subgroups]
-            }
-            return result
+        with self.lock:
+            if not self.kp:
+                return []
+            
+            def recurse_groups(group, level=0):
+                result = {
+                    "uuid": str(group.uuid),
+                    "name": group.name,
+                    "level": level,
+                    "icon": group.icon,
+                    "subgroups": [recurse_groups(child, level + 1) for child in group.subgroups]
+                }
+                return result
 
-        # Devolvemos la estructura jerárquica completa desde la raíz
-        return recurse_groups(self.kp.root_group)
+            # Devolvemos la estructura jerárquica completa desde la raíz
+            return recurse_groups(self.kp.root_group)
 
     def add_group(self, name):
         with self.lock:
@@ -75,7 +78,9 @@ class KeePassManager:
 
     def update_entry(self, entry_uuid, title=None, username=None, password=None, url=None, notes=None):
         with self.lock:
-            entry = self.kp.find_entries(uuid=entry_uuid, first=True)
+            # Convert string UUID to bytes/UUID object for pykeepass
+            target_uuid = uuid.UUID(entry_uuid)
+            entry = self.kp.find_entries(uuid=target_uuid, first=True)
             if entry:
                 if title is not None: entry.title = title
                 if username is not None: entry.username = username
@@ -88,7 +93,8 @@ class KeePassManager:
 
     def delete_entry(self, entry_uuid):
         with self.lock:
-            entry = self.kp.find_entries(uuid=entry_uuid, first=True)
+            target_uuid = uuid.UUID(entry_uuid)
+            entry = self.kp.find_entries(uuid=target_uuid, first=True)
             if entry:
                 self.kp.delete_entry(entry)
                 self.kp.save()

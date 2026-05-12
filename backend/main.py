@@ -9,7 +9,9 @@ from pydantic import BaseModel
 from typing import Optional
 from keepass_manager import KeePassManager
 from fastapi.security import OAuth2PasswordBearer
-from auth import authenticate_user, load_config, create_access_token, verify_token
+from auth import authenticate_user, load_config, create_access_token, verify_token, save_config, encrypt_value
+from ldap3 import Server as LDAPServer, Connection as LDAPConnection, ALL as LDAP_ALL, NTLM as LDAP_NTLM
+import traceback
 
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
@@ -62,7 +64,9 @@ class EntryRequest(BaseModel):
 
 @app.post("/api/login")
 async def login(req: LoginRequest):
-    user = authenticate_user(req.username, req.password)
+    clean_user = req.username.strip()
+    clean_pass = req.password.strip()
+    user = authenticate_user(clean_user, clean_pass)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
@@ -128,7 +132,7 @@ async def add_entry(entry: EntryRequest, current_user: dict = Depends(get_curren
         raise HTTPException(status_code=400, detail="Base de datos bloqueada")
     
     if kp_manager.add_entry(entry.group, entry.title, entry.username, entry.password, entry.url, entry.notes):
-        await sio.emit('entry_change', {'action': 'add', 'user': current_user["sub"], 'data': entry.dict()})
+        await sio.emit('entry_change', {'action': 'add', 'user': current_user["sub"]})
         return {"status": "success"}
     raise HTTPException(status_code=500, detail="Failed to add entry")
 
@@ -200,6 +204,70 @@ async def update_config(new_config: dict, current_user: dict = Depends(get_curre
         
     save_config(config)
     return {"status": "success"}
+
+class ADTestRequest(BaseModel):
+    ad_server: str
+    ad_domain: str
+    ad_group: Optional[str] = ""
+    test_user: str
+    test_pass: str
+
+@app.post("/api/config/test-ad")
+async def test_ad_config(req: ADTestRequest, current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # We use a modified version of authenticate_user logic but with custom config
+    clean_server = req.ad_server.strip()
+    clean_domain = req.ad_domain.strip()
+    clean_user = req.test_user.strip()
+    clean_pass = req.test_pass.strip()
+    
+    # Robust parsing
+    import re
+    host = clean_server
+    port = 389
+    host = re.sub(r'^ldaps?://', '', host)
+    if ':' in host:
+        parts = host.split(':')
+        host = parts[0]
+        try: port = int(parts[1])
+        except: pass
+
+    try:
+        server = LDAPServer(host, port=port, connect_timeout=5)
+        conn = LDAPConnection(server, user=f"{clean_domain}\\{clean_user}", password=clean_pass, authentication=LDAP_NTLM, receive_timeout=10, auto_referrals=False)
+        
+        if not conn.bind():
+            return {"status": "error", "message": f"Fallo de autenticación: {conn.result.get('description', 'Bind fallido')}"}
+        
+        # Check group if provided
+        if req.ad_group:
+            search_base = ",".join([f"DC={part}" for part in req.ad_domain.split(".")])
+            search_filter = f"(sAMAccountName={clean_user})"
+            print(f"DEBUG AUTH: Searching user with filter='{search_filter}' in base='{search_base}'")
+            
+            # Use SEARCH_SCOPE_WHOLE_SUBTREE (default but explicit)
+            
+            from ldap3 import SUBTREE
+            conn.search(search_base=search_base, 
+                       search_filter=search_filter, 
+                       search_scope=SUBTREE,
+                       attributes=['memberOf', 'sAMAccountName'])
+            
+            if not conn.entries:
+                # Fallback: try searching in just the root DC if multiple levels
+                if "," in search_base:
+                    new_base = search_base.split(",", 1)[1] if "," in search_base else search_base
+                    conn.search(search_base=new_base, search_filter=search_filter, search_scope=SUBTREE, attributes=['memberOf'])
+                
+                if not conn.entries:
+                    return {"status": "error", "message": "Usuario no encontrado en AD"}
+        
+        return {"status": "success", "message": "¡Conexión y autenticación exitosas!"}
+    except Exception as e:
+        traceback.print_exc()
+        return {"status": "error", "message": f"Error de conexión (DEBUG): {str(e)}"}
 
 # Serve Frontend
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")

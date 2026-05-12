@@ -1,10 +1,10 @@
 {
     "keepass_file_path": "/app/data/kpsisdb.kdbx",
-    "ad_server": "ldap://srvmad01:389",
-    "ad_domain": "perezllorca.com",
+    "ad_server": "192.168.1.190",
+    "ad_domain": "PEREZ-LLORCA.NET",
     "admin_user": "admin",
     "admin_pass": "admin",
-    "ad_group": "MST_IT_Infraestructura_Operaciones",
+    "ad_group": "Admins. del dominio",
     "azure_tenant_id": "",
     "azure_client_id": "",
     "azure_client_secret": "",

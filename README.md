@@ -1,66 +1,45 @@
-# KeePass Web Viewer & Manager v1.2 Beta
-> **By Eduardo Restrepo**
+# KeePass Web Viewer v2.0
 
-Una solución moderna, segura y profesional para el acceso compartido a archivos KeePass (`.kdbx`) dentro del equipo de tecnología.
+Visualizador web moderno y seguro para archivos de base de datos KeePass (.kdbx), diseñado para equipos de tecnología con integración de Active Directory y SharePoint.
 
-## 🚀 Novedades de la Versión 1.2 Beta
-- **Seguridad Reforzada (JWT)**: Implementación de JSON Web Tokens para una gestión de sesiones más robusta y segura.
-- **Cifrado de Configuración**: Las credenciales sensibles del servidor ahora se almacenan cifradas en disco.
-- **Navegación Jerárquica**: Nuevo sistema de árbol de grupos dinámico para una mejor organización de las credenciales.
-- **Utilidades de Password**: Generador de claves aleatorias y medidor de fuerza de seguridad integrados.
-- **Copiado Rápido**: Botones dedicados para copiar usuario y contraseña directamente desde la tabla principal.
-- **Iconos Nativos**: Integración de Lucide Icons para una interfaz más intuitiva y profesional.
-- **Soporte Multiusuario Concurrente**: Optimización para que múltiples personas trabajen simultáneamente sobre el mismo archivo sin conflictos.
+## 🚀 Características
+- **Autenticación AD/LDAP**: Validación de usuarios y grupos contra Active Directory (NTLM).
+- **Integración SharePoint**: Sincronización en tiempo real mediante volúmenes de Docker y OneDrive.
+- **Seguridad**: Soporte para algoritmos legacy (NTLM/MD4) mediante configuración de OpenSSL.
+- **Diseño Premium**: Interfaz responsive con modo oscuro y estética "Glassmorphism".
+- **Easter Egg**: Presiona 7 veces el título principal para activar el modo "HACKED".
 
-## 🛠️ Características Principales
-- **Interfaz Ultra-Premium**: Diseño oscuro con efectos avanzados de glassmorphism y animaciones fluidas.
-- **Autenticación AD/LDAP**: Integración directa con el Directorio Activo para el acceso corporativo.
-- **Sincronización en Tiempo Real**: Cambios instantáneos vía WebSockets (Socket.io).
-- **Gestión Completa (CRUD)**: Control total sobre entradas y grupos.
-- **Panel de Administración**: Configuración centralizada y segura.
+## 🛠️ Configuración de SharePoint
+Para utilizar una base de datos alojada en SharePoint:
 
-## 📁 Estructura del Proyecto
-- `backend/`: API REST con FastAPI + Socket.io + Lógica de cifrado.
-- `frontend/`: Single Page Application (SPA) moderna con CSS/JS puro.
-- `data/`: Directorio seguro para el archivo de base de datos.
-- `scripts/`: Herramientas de mantenimiento y automatización.
-
-## 🔐 Credenciales por Defecto (Entorno de Desarrollo)
-- **Admin**: `admin` / `admin`
-- **KeePass Maestro (Demo)**: `master`
-- **LDAP Mock**: `tech_user1` / `password`
-
-## 🐳 Despliegue con Docker (Recomendado)
-Para una ejecución rápida y aislada:
-
-1. **Construir e iniciar**:
-   ```powershell
-   docker-compose up -d --build
+1. **Sincroniza** la carpeta de SharePoint en tu máquina host usando OneDrive.
+2. Abre el archivo `docker-compose.yml` y localiza la sección de `volumes`.
+3. Mapea la ruta local de tu Windows a la ruta interna del contenedor:
+   ```yaml
+   volumes:
+     - "C:\\Tu\\Ruta\\Sincronizada\\archivo.kdbx:/app/data/kpsisdb.kdbx"
    ```
+4. En el panel de configuración de la Web, asegúrate de que la ruta sea `/app/data/kpsisdb.kdbx`.
 
-## 🚩 Primeros Pasos (Configuración Inicial)
-**IMPORTANTE**: Al iniciar el sistema por primera vez, debes seguir estos pasos para que la aplicación funcione correctamente:
+## 📂 Estructura del Proyecto
+- `/backend`: Servidor FastAPI (Python) con lógica de desencriptación y autenticación.
+- `/frontend`: Interfaz de usuario (HTML/JS/CSS).
+- `/data`: Directorio local para persistencia (si no se usa SharePoint).
 
-1. **Acceso Inicial**: Entra en `http://localhost:3007` e inicia sesión con las credenciales por defecto:
-   - **Usuario**: `admin`
-   - **Contraseña**: `admin`
-2. **Configuración del Entorno**: Una vez dentro, haz clic en el icono de **Configuración** (esquina superior derecha) para ajustar los siguientes parámetros:
-   - **Usuario Administrador**: Cambia la contraseña por defecto por una segura.
-   - **Ubicación del Archivo**: Asegúrate de que apunte a `/app/data/nombre_de_tu_archivo.kdbx`.
-   - **Active Directory (LDAP)**: Configura el servidor, dominio y el **Grupo de Autenticación** requerido para tus usuarios.
-   - **Backup**: Utiliza el botón **"Exportar Backup"** para obtener copias de seguridad de tu archivo `.kdbx` en cualquier momento.
-3. **Persistencia**: 
-   - El archivo físico `.kdbx` debe estar en la carpeta raíz `./data/` de este proyecto en tu Windows.
-   - La configuración se guarda automáticamente en `./backend/config.json`.
+## 🔑 Autenticación AD (PEREZ-LLORCA.NET)
+La aplicación está pre-configurada para el dominio `PEREZ-LLORCA.NET`. 
+- **Servidor**: `192.168.1.190`
+- **Puerto**: `389` (LDAP estándar)
+- **Grupo Admin**: `Admins. del dominio`
 
-## 🏁 Inicio Manual
-El servidor se sirve por defecto en `http://localhost:3007`.
+## 🐳 Despliegue con Docker
+```bash
+# Iniciar la aplicación
+docker compose up -d --build
 
-Para iniciar el entorno manualmente:
-```powershell
-cd backend
-python main.py
+# Reiniciar tras cambios en la configuración del volumen
+docker compose restart
 ```
 
 ---
-*Este proyecto es parte del ecosistema de herramientas internas del equipo de tecnología.*
+*Desarrollado por Eduardo Restrepo | v2.0*

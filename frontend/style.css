@@ -441,3 +441,111 @@ tr:hover .copy-btn { opacity: 0.6; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* --- Admin Modal Tabs --- */
+.modal-tabs {
+    display: flex !important;
+    flex-direction: row !important;
+    padding: 0 40px !important;
+    border-bottom: 1px solid var(--border) !important;
+    background: rgba(0,0,0,0.3) !important;
+    gap: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.tab-btn {
+    background: transparent !important;
+    border: none !important;
+    padding: 20px 30px !important;
+    color: var(--text-dim) !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-size: 1.1rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    border-bottom: 4px solid transparent !important;
+    outline: none !important;
+    margin: 0 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+.tab-btn:hover {
+    color: var(--text) !important;
+    background: rgba(255,255,255,0.05) !important;
+}
+
+.tab-btn.active {
+    color: var(--primary) !important;
+    border-bottom-color: var(--primary) !important;
+    background: rgba(255,255,255,0.08) !important;
+}
+
+.tab-pane {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+.tab-pane.active {
+    display: block !important;
+    visibility: visible !important;
+    animation: fadeIn 0.3s ease-out !important;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}
+
+/* Easter Egg */
+#easter-egg-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.hacked-text {
+    font-size: 8rem;
+    font-weight: 900;
+    color: #ff0000;
+    text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000;
+    animation: explode 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    letter-spacing: 10px;
+}
+
+@keyframes explode {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.5); opacity: 1; }
+    100% { transform: scale(1.2); opacity: 1; }
+}
+
+.particle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #ff0000;
+    border-radius: 50%;
+    animation: particleExplode 1s ease-out forwards;
+}
+
+@keyframes particleExplode {
+    to {
+        transform: translate(var(--x), var(--y)) scale(0);
+        opacity: 0;
+    }
+}

@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11
 
 WORKDIR /app
 
@@ -9,6 +9,10 @@ RUN apt-get update && apt-get install -y \
     libsasl2-dev \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Enable OpenSSL legacy provider for NTLM (MD4) support
+RUN sed -i 's/default = default_sect/default = default_sect\nlegacy = legacy_sect/' /etc/ssl/openssl.cnf && \
+    sed -i 's/\[default_sect\]/\[default_sect\]\nactivate = 1\n\[legacy_sect\]\nactivate = 1/' /etc/ssl/openssl.cnf
 
 # Copy and install dependencies
 COPY backend/requirements.txt .

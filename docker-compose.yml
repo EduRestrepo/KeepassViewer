@@ -7,6 +7,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./backend/config.json:/app/backend/config.json
+      - "C:\\Sync-Keepass\\OneDrive - Perez-Llorca S.L.P\\MST_IT_Infraestructura_Operaciones-Infraestructura y Comunicaciones - 00- Keypass\\kpsisdb.kdbx:/app/data/kpsisdb.kdbx"
     environment:
       - TZ=Europe/Madrid
     restart: always

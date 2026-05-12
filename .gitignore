@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv
+venv/
+ENV/
+
+# Docker
+.dockerignore
+
+# App Specific (SENSITIVE)
+backend/config.json
+data/*.kdbx
+*.kdbx
+
+# IDEs
+.vscode/
+.idea/

@@ -1,6 +1,8 @@
 import json
 import os
-from ldap3 import Server, Connection, ALL, NTLM
+import threading
+import uuid
+from ldap3 import Server as LDAPServer, Connection as LDAPConnection, ALL as LDAP_ALL, NTLM as LDAP_NTLM
 
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
@@ -44,6 +46,13 @@ def load_config():
             return json.load(f)
     return {}
 
+CONFIG_LOCK = threading.Lock()
+
+def save_config(config):
+    with CONFIG_LOCK:
+        with open(CONFIG_PATH, "w") as f:
+            json.dump(config, f, indent=4)
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     config = load_config()
     secret_key = config.get("secret_key", "secret")
@@ -86,31 +95,59 @@ def authenticate_user(username, password):
         # If no AD server, only local admin works
         return None
 
+    # Robust parsing for auth
+    import re
+    host = ad_server.strip()
+    port = 389
+    host = re.sub(r'^ldaps?://', '', host)
+    if ':' in host:
+        parts = host.split(':')
+        host = parts[0]
+        try: port = int(parts[1])
+        except: pass
+
+    # Attempt AD Authentication
     try:
-        server = Server(ad_server, get_info=ALL)
-        conn = Connection(server, user=f"{ad_domain}\\{username}", password=password, authentication=NTLM)
-        if conn.bind():
-            # Check group membership if configured
-            required_group = config.get("ad_group")
-            if required_group:
-                search_base = ",".join([f"DC={part}" for part in ad_domain.split(".")])
-                conn.search(search_base=search_base, 
-                           search_filter=f"(sAMAccountName={username})", 
-                           attributes=['memberOf'])
+        server = LDAPServer(host, port=port, get_info=LDAP_ALL)
+        
+        # Format: domain\user
+        bind_user = f"{ad_domain.strip()}\\{username.strip()}"
+        conn = LDAPConnection(server, user=bind_user, password=password, authentication=LDAP_NTLM, receive_timeout=10, auto_referrals=False)
+        
+        if not conn.bind():
+            return None
+
+        # Check group membership if configured
+        required_group = config.get("ad_group")
+        if required_group:
+            search_base = ",".join([f"DC={part}" for part in ad_domain.strip().split(".")])
+            search_filter = f"(sAMAccountName={username.strip()})"
+            
+            from ldap3 import SUBTREE
+            conn.search(search_base=search_base, 
+                       search_filter=search_filter, 
+                       search_scope=SUBTREE,
+                       attributes=['memberOf', 'primaryGroupID'])
+            
+            if not conn.entries:
+                conn.search(search_base='', search_filter=search_filter, search_scope=SUBTREE, attributes=['memberOf'])
+
+            if not conn.entries:
+                return None
+            
+            user_entry = conn.entries[0]
+            user_groups = user_entry.memberOf.value if hasattr(user_entry, 'memberOf') else []
+            
+            is_member = any(required_group.lower() in g.lower() for g in user_groups)
+            if not is_member:
+                return None
                 
-                if not conn.entries:
-                    return None
-                
-                user_groups = conn.entries[0].memberOf.value
-                # Check if required_group (as DN or Name) is in user_groups
-                is_member = any(required_group.lower() in g.lower() for g in user_groups)
-                if not is_member:
-                    print(f"User {username} is not member of {required_group}")
-                    return None
-                    
-            return {"username": username, "role": "user"}
+        return {"username": username, "role": "user"}
     except Exception as e:
-        print(f"AD Auth error: {e}")
+        print(f"DEBUG AUTH: Critical AD error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
     # Entra ID (Azure) Authentication
     tenant_id = config.get("azure_tenant_id")
