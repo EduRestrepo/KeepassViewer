@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 from keepass_manager import KeePassManager
 from fastapi.security import OAuth2PasswordBearer
-from auth import authenticate_user, load_config, create_access_token, verify_token, save_config, encrypt_value
+from auth import authenticate_user, load_config, create_access_token, verify_token, save_config, encrypt_value, decrypt_value
 from ldap3 import Server as LDAPServer, Connection as LDAPConnection, ALL as LDAP_ALL, NTLM as LDAP_NTLM
 import traceback
 
@@ -51,7 +51,7 @@ class LoginRequest(BaseModel):
     password: str
 
 class KeePassOpenRequest(BaseModel):
-    password: str
+    password: Optional[str] = ""
 
 class EntryRequest(BaseModel):
     uuid: Optional[str] = None
@@ -82,22 +82,34 @@ async def open_keepass(req: KeePassOpenRequest, current_user: dict = Depends(get
     if not os.path.exists(file_path):
         raise HTTPException(status_code=400, detail=f"Archivo no encontrado en {file_path}")
     
+    req_password = req.password
+    
+    # Si la contraseña está vacía, intentamos usar la guardada en configuración
+    if not req_password:
+        save_keepass = config.get("save_keepass_password")
+        is_saved = save_keepass in [True, "true", "True", 1, "1"]
+        if is_saved and config.get("keepass_password"):
+            req_password = decrypt_value(config.get("keepass_password"))
+            
+    if not req_password:
+        raise HTTPException(status_code=401, detail="Contraseña maestra requerida")
+    
     # Si ya está abierto, solo verificamos si la contraseña es la misma
     if kp_manager and kp_manager.kp:
-        if req.password == kp_master_password:
+        if req_password == kp_master_password:
             return {"status": "success", "message": "Database already open"}
         else:
             # Intentar abrir con la nueva contraseña por si cambió en disco
-            if kp_manager.open(req.password):
-                kp_master_password = req.password
+            if kp_manager.open(req_password):
+                kp_master_password = req_password
                 return {"status": "success"}
             else:
                 raise HTTPException(status_code=401, detail="Contraseña maestra incorrecta")
     
     # Abrir por primera vez
     kp_manager = KeePassManager(file_path)
-    if kp_manager.open(req.password):
-        kp_master_password = req.password
+    if kp_manager.open(req_password):
+        kp_master_password = req_password
         return {"status": "success"}
     else:
         raise HTTPException(status_code=401, detail="Contraseña maestra incorrecta")
@@ -184,7 +196,8 @@ async def update_config(new_config: dict, current_user: dict = Depends(get_curre
     # Whitelist of keys allowed to be updated from the UI
     allowed_keys = [
         "keepass_file_path", "ad_server", "ad_domain", "ad_group", 
-        "admin_user", "azure_tenant_id", "azure_client_id", "azure_group_id"
+        "admin_user", "azure_tenant_id", "azure_client_id", "azure_group_id",
+        "save_keepass_password"
     ]
     
     for key in allowed_keys:
@@ -197,6 +210,9 @@ async def update_config(new_config: dict, current_user: dict = Depends(get_curre
         
     if "azure_client_secret" in new_config and new_config["azure_client_secret"]:
         config["azure_client_secret"] = encrypt_value(new_config["azure_client_secret"])
+        
+    if "keepass_password" in new_config and new_config["keepass_password"]:
+        config["keepass_password"] = encrypt_value(new_config["keepass_password"])
     
     # Ensure secret_key is NEVER lost
     if "secret_key" not in config:
@@ -223,6 +239,29 @@ async def test_ad_config(req: ADTestRequest, current_user: dict = Depends(get_cu
     clean_user = req.test_user.strip()
     clean_pass = req.test_pass.strip()
     
+    # Try Auth Bridge first for validation
+    try:
+        import requests
+        bridge_res = requests.post(
+            "http://host.docker.internal:8888/auth",
+            json={"username": clean_user, "password": clean_pass},
+            timeout=3
+        )
+        if bridge_res.status_code == 200:
+            result = bridge_res.json()
+            if result.get("valid"):
+                # Check group if provided
+                if req.ad_group:
+                    user_groups = result.get("groups", [])
+                    is_member = any(req.ad_group.lower() in g.lower() for g in user_groups)
+                    if not is_member:
+                        return {"status": "error", "message": f"El usuario no pertenece al grupo: {req.ad_group}"}
+                return {"status": "success", "message": "¡Conexión y autenticación exitosas (a través de Bridge)!"}
+            else:
+                return {"status": "error", "message": f"Fallo de autenticación: {result.get('error', 'Credenciales inválidas')}"}
+    except requests.exceptions.RequestException:
+        pass
+
     # Robust parsing
     import re
     host = clean_server

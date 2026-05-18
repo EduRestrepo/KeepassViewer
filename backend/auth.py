@@ -2,7 +2,7 @@ import json
 import os
 import threading
 import uuid
-from ldap3 import Server as LDAPServer, Connection as LDAPConnection, ALL as LDAP_ALL, NTLM as LDAP_NTLM
+from ldap3 import Server as LDAPServer, Connection as LDAPConnection, ALL as LDAP_ALL, NTLM as LDAP_NTLM, SIMPLE as LDAP_SIMPLE
 
 from jose import JWTError, jwt
 from datetime import datetime, timedelta, timezone
@@ -80,22 +80,53 @@ def verify_token(token: str):
 def authenticate_user(username, password):
     config = load_config()
     
-    # Simple admin check
+    # 1. Local Admin Fallback check (Always check if AD server is not configured)
     admin_u = config.get("admin_user")
     admin_p = decrypt_value(config.get("admin_pass"))
     
-    if username == admin_u and password == admin_p:
-        return {"username": username, "role": "admin"}
-    
-    # AD Authentication
+    # AD Authentication Configuration
     ad_server = config.get("ad_server")
     ad_domain = config.get("ad_domain")
     
-    if not ad_server:
+    if not ad_server or not ad_domain:
         # If no AD server, only local admin works
+        if username == admin_u and password == admin_p:
+            return {"username": username, "role": "admin"}
         return None
 
-    # Robust parsing for auth
+    # 2. Attempt AD Authentication via Host Auth Bridge (ideal for GPO-restricted Domain Admins)
+    try:
+        import requests
+        print(f"DEBUG AUTH: Attempting authentication via Host Auth Bridge for {username}")
+        # Connect to the lightweight bridge running natively on the host
+        bridge_res = requests.post(
+            "http://host.docker.internal:8888/auth",
+            json={"username": username, "password": password},
+            timeout=5
+        )
+        if bridge_res.status_code == 200:
+            result = bridge_res.json()
+            if result.get("valid"):
+                print(f"DEBUG AUTH: Host Auth Bridge successfully validated credentials for {username}")
+                
+                # Check group membership if configured
+                required_group = config.get("ad_group")
+                if required_group:
+                    user_groups = result.get("groups", [])
+                    is_member = any(required_group.lower() in g.lower() for g in user_groups)
+                    if not is_member:
+                        print(f"DEBUG AUTH: User {username} is not member of the required group: {required_group}")
+                        return None
+                        
+                role = "admin" if username.lower() == admin_u.lower() else "user"
+                return {"username": username, "role": role}
+            else:
+                print(f"DEBUG AUTH: Host Auth Bridge returned invalid credentials for {username}. Error: {result.get('error')}")
+                return None
+    except requests.exceptions.RequestException as e:
+        print(f"DEBUG AUTH: Host Auth Bridge not available (this is expected if running in standalone mode): {e}")
+
+    # Robust parsing for AD host and port
     import re
     host = ad_server.strip()
     port = 389
@@ -106,47 +137,91 @@ def authenticate_user(username, password):
         try: port = int(parts[1])
         except: pass
 
-    # Attempt AD Authentication
+    # Attempt AD Authentication via Service Account DN Lookup
     try:
         server = LDAPServer(host, port=port, get_info=LDAP_ALL)
         
-        # Format: domain\user
-        bind_user = f"{ad_domain.strip()}\\{username.strip()}"
-        conn = LDAPConnection(server, user=bind_user, password=password, authentication=LDAP_NTLM, receive_timeout=10, auto_referrals=False)
+        # We bind using the configured Admin / Service Account from settings
+        # The user has configured 'admin_user' and 'admin_pass' as their AD service account
+        service_user = admin_u
+        service_pass = admin_p
+        
+        # Try Simple Bind first for the service account, then NTLM if Simple fails
+        if "@" in service_user:
+            bind_service_user = service_user
+        else:
+            bind_service_user = f"{service_user}@{ad_domain.strip()}"
+            
+        print(f"DEBUG AUTH: Attempting Simple Bind for Service Account: {bind_service_user}")
+        conn = LDAPConnection(server, user=bind_service_user, password=service_pass, authentication=LDAP_SIMPLE, receive_timeout=10, auto_referrals=False)
         
         if not conn.bind():
+            # If Simple Bind fails, attempt NTLM bind as fallback
+            bind_service_user_ntlm = f"{ad_domain.strip()}\\{service_user}"
+            print(f"DEBUG AUTH: Service Simple Bind failed. Trying NTLM Bind: {bind_service_user_ntlm}")
+            conn = LDAPConnection(server, user=bind_service_user_ntlm, password=service_pass, authentication=LDAP_NTLM, receive_timeout=10, auto_referrals=False)
+            
+            if not conn.bind():
+                print(f"DEBUG AUTH: Service account bind failed completely. Details: {conn.result}")
+                # Fallback to local admin check if credentials match
+                if username == admin_u and password == admin_p:
+                    return {"username": username, "role": "admin"}
+                return None
+                
+        print(f"DEBUG AUTH: Service account bound successfully.")
+        
+        # Search for the logging-in user to find their exact Distinguished Name (DN)
+        search_base = ",".join([f"DC={part}" for part in ad_domain.strip().split(".")])
+        search_filter = f"(sAMAccountName={username.strip()})"
+        
+        from ldap3 import SUBTREE
+        conn.search(search_base=search_base, 
+                    search_filter=search_filter, 
+                    search_scope=SUBTREE,
+                    attributes=['distinguishedName', 'memberOf'])
+                    
+        if not conn.entries:
+            print(f"DEBUG AUTH: Logging-in user {username} not found in Active Directory.")
+            # Fallback to local admin check if credentials match
+            if username == admin_u and password == admin_p:
+                return {"username": username, "role": "admin"}
             return None
-
+            
+        user_entry = conn.entries[0]
+        user_dn = user_entry.entry_dn
+        print(f"DEBUG AUTH: Successfully resolved user DN: {user_dn}")
+        
+        # Perform password verification by attempting a SIMPLE LDAP bind as the logging-in user using their DN!
+        # Because we bind using their DN rather than sAMAccountName or UPN, AD bypasses the interactive Workstation Restriction (52f) check!
+        print(f"DEBUG AUTH: Verifying user password by binding as DN: {user_dn}")
+        user_conn = LDAPConnection(server, user=user_dn, password=password, authentication=LDAP_SIMPLE, receive_timeout=10, auto_referrals=False)
+        
+        if not user_conn.bind():
+            print(f"DEBUG AUTH: User password verification failed (invalid password or AD restriction). Details: {user_conn.result}")
+            return None
+            
+        print(f"DEBUG AUTH: User password verified successfully.")
+        
         # Check group membership if configured
         required_group = config.get("ad_group")
         if required_group:
-            search_base = ",".join([f"DC={part}" for part in ad_domain.strip().split(".")])
-            search_filter = f"(sAMAccountName={username.strip()})"
-            
-            from ldap3 import SUBTREE
-            conn.search(search_base=search_base, 
-                       search_filter=search_filter, 
-                       search_scope=SUBTREE,
-                       attributes=['memberOf', 'primaryGroupID'])
-            
-            if not conn.entries:
-                conn.search(search_base='', search_filter=search_filter, search_scope=SUBTREE, attributes=['memberOf'])
-
-            if not conn.entries:
-                return None
-            
-            user_entry = conn.entries[0]
             user_groups = user_entry.memberOf.value if hasattr(user_entry, 'memberOf') else []
-            
             is_member = any(required_group.lower() in g.lower() for g in user_groups)
             if not is_member:
+                print(f"DEBUG AUTH: User {username} does not belong to the required AD group: {required_group}")
                 return None
                 
-        return {"username": username, "role": "user"}
+        # Successful login! If they log in using the configured admin username, they are admin, otherwise user
+        role = "admin" if username.lower() == admin_u.lower() else "user"
+        return {"username": username, "role": role}
+        
     except Exception as e:
-        print(f"DEBUG AUTH: Critical AD error: {e}")
+        print(f"DEBUG AUTH: Critical Active Directory Exception: {e}")
         import traceback
         traceback.print_exc()
+        # Fallback to local admin check if credentials match
+        if username == admin_u and password == admin_p:
+            return {"username": username, "role": "admin"}
         return None
 
     # Entra ID (Azure) Authentication

@@ -30,7 +30,20 @@ Para utilizar una base de datos alojada en SharePoint:
 La aplicación está pre-configurada para el dominio `PEREZ-LLORCA.NET`. 
 - **Servidor**: `192.168.1.190`
 - **Puerto**: `389` (LDAP estándar)
-- **Grupo Admin**: `Admins. del dominio`
+- **Grupo Requerido**: `Admins. del dominio`
+
+## 🌉 Puente de Autenticación Local (Auth Bridge)
+Debido a que las políticas de seguridad (GPO) de `PEREZ-LLORCA.NET` bloquean los Binds simples de LDAP y NTLM para cuentas altamente privilegiadas (como las del grupo `Admins. del dominio`), se ha implementado un **puente de autenticación nativo** en el servidor host:
+
+1. El backend del contenedor Docker se conecta al host usando el DNS interno `host.docker.internal:8888`.
+2. El script nativo del host valida las credenciales a través del canal de seguridad integrado de Windows (usando Kerberos/Negotiate en segundo plano bajo tu sesión activa).
+3. Si la autenticación es correcta, devuelve de forma segura la pertenencia a los grupos del AD al contenedor.
+
+### Gestión del Puente (Servidor Windows Host)
+Los scripts de control están ubicados en la carpeta `/scratch`:
+- **`scratch/auth_helper.py`**: El servidor HTTP puente en Python nativo.
+- **`scratch/start_auth_bridge.bat`**: Script ejecutable de Windows para arrancar el puente de autenticación en modo invisible (`Hidden`). Simplemente haz doble clic sobre él en el servidor si este se reinicia.
+- El puente ya está configurado y ejecutándose en el puerto `8888`.
 
 ## 🐳 Despliegue con Docker
 ```bash

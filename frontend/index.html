@@ -151,6 +151,18 @@
                                     <label>Ruta del Archivo .kdbx</label>
                                     <input type="text" id="conf-file-path" name="keepass_file_path" placeholder="C:/ruta/al/archivo.kdbx">
                                 </div>
+                                <div class="input-group" style="margin-top: 25px; flex-direction: row; align-items: center; gap: 12px; cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="conf-save-keepass-password" name="save_keepass_password" value="true" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary); margin: 0;">
+                                    <div>
+                                        <label for="conf-save-keepass-password" style="font-weight: 600; color: var(--text); margin: 0; cursor: pointer;">Guardar contraseña maestra del KeePass</label>
+                                        <span style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-top: 2px;">Si se activa, los usuarios no tendrán que introducir la contraseña del KeePass al iniciar sesión.</span>
+                                    </div>
+                                </div>
+                                <div class="input-group" id="conf-keepass-password-wrapper" style="margin-top: 20px;">
+                                    <label for="conf-keepass-password">Nueva Contraseña Maestra del KeePass</label>
+                                    <input type="password" id="conf-keepass-password" name="keepass_password" placeholder="••••••••">
+                                    <span style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-top: 2px;">Solo rellena este campo para cambiar o establecer la contraseña guardada.</span>
+                                </div>
                             </section>
                         </div>
 
@@ -302,6 +314,6 @@
         </div>
     </div>
     <div id="easter-egg-container" class="hidden"></div>
-    <script src="script.js?v=2.0"></script>
+    <script src="script.js?v=2.1"></script>
 </body>
 </html>

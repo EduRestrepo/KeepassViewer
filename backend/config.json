@@ -9,5 +9,7 @@
     "azure_client_id": "",
     "azure_client_secret": "",
     "azure_group_id": "b6f492a4-a9b2-405f-8a5b-ec7fb5642416",
-    "secret_key": "your-secret-key-change-me"
+    "secret_key": "your-secret-key-change-me",
+    "save_keepass_password": "true",
+    "keepass_password": "gAAAAABqCydA9ZzLlzLPrD73LQHbGxn7yQdiECO4F1W_2ek4sohCCHIeT29rkRzZ4QMIat2yzikqyOk5bRXvkuy92Aif6kaJcWl22BG8Rbye3PtHViJ0vgo="
 }

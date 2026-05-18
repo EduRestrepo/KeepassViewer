@@ -2,6 +2,7 @@ services:
   keepass-viewer:
     build: .
     container_name: keepass_viewer
+    hostname: SRVDOCKER
     ports:
       - "3007:3007"
     volumes:

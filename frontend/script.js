@@ -74,12 +74,27 @@ function logout() {
 let idleTimer = null;
 const IDLE_TIME = 15 * 60 * 1000; // 15 minutes
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     if (authToken) {
-        showScreen('master');
         if (currentUser) {
             const displayUser = document.getElementById('display-user');
             if (displayUser) displayUser.innerText = currentUser.username;
+        }
+        
+        // Intentar abrir el KeePass automáticamente
+        try {
+            const res = await apiFetch('/api/keepass/open', {
+                method: 'POST',
+                body: JSON.stringify({ password: '' })
+            });
+            if (res.ok) {
+                showScreen('main');
+                refreshData();
+            } else {
+                showScreen('master');
+            }
+        } catch (err) {
+            showScreen('master');
         }
     } else {
         showScreen('login');
@@ -144,8 +159,23 @@ function setupEventListeners() {
                         localStorage.setItem('authToken', authToken);
                         localStorage.setItem('currentUser', JSON.stringify(currentUser));
                         
-                        showScreen('master');
                         document.getElementById('display-user').innerText = currentUser.username;
+                        
+                        // Intentar abrir el KeePass automáticamente
+                        try {
+                            const openRes = await apiFetch('/api/keepass/open', {
+                                method: 'POST',
+                                body: JSON.stringify({ password: '' })
+                            });
+                            if (openRes.ok) {
+                                showScreen('main');
+                                refreshData();
+                            } else {
+                                showScreen('master');
+                            }
+                        } catch (err) {
+                            showScreen('master');
+                        }
                     } else {
                         showError('login', 'Credenciales inválidas');
                     }
@@ -216,6 +246,12 @@ function setupEventListeners() {
                 const formData = new FormData(e.target);
                 const config = Object.fromEntries(formData.entries());
                 
+                // Explicitamente leer el valor de la checkbox para guardar contraseña
+                const savePassCheckbox = document.getElementById('conf-save-keepass-password');
+                if (savePassCheckbox) {
+                    config.save_keepass_password = savePassCheckbox.checked;
+                }
+                
                 const res = await apiFetch('/api/config', {
                     method: 'POST',
                     body: JSON.stringify(config)
@@ -234,6 +270,8 @@ function setupEventListeners() {
                 }
             });
         }
+
+
 
         // Password strength & Generator
         const passInput = document.getElementById('entry-password');
@@ -682,12 +720,17 @@ async function openAdminModal() {
         return;
     }
     
+    const savePassCheckbox = document.getElementById('conf-save-keepass-password');
+    const passInput = document.getElementById('conf-keepass-password');
+    
     // Clear fields first
     document.getElementById('conf-file-path').value = '';
     document.getElementById('conf-ad-server').value = '';
     document.getElementById('conf-ad-domain').value = '';
     document.getElementById('conf-admin-user').value = '';
     document.getElementById('conf-admin-pass').value = '';
+    if (savePassCheckbox) savePassCheckbox.checked = false;
+    if (passInput) passInput.value = '';
 
     if (authToken) {
         try {
@@ -704,6 +747,15 @@ async function openAdminModal() {
                 document.getElementById('conf-azure-group').value = config.azure_group_id || '';
                 document.getElementById('conf-admin-user').value = config.admin_user || '';
                 document.getElementById('conf-admin-pass').value = '';
+                
+                const isSaved = config.save_keepass_password === true || config.save_keepass_password === 'true';
+                if (savePassCheckbox) savePassCheckbox.checked = isSaved;
+                
+                const hasPassword = !!config.keepass_password;
+                if (passInput) {
+                    passInput.value = '';
+                    passInput.placeholder = hasPassword ? '•••••••• (Contraseña guardada)' : '••••••••';
+                }
             }
         } catch (e) {
             console.error('Error fetching config:', e);
