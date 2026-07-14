@@ -17,3 +17,7 @@ data/*.kdbx
 # IDEs
 .vscode/
 .idea/
+
+# Shortcuts / scratch secrets
+*.lnk
+scratch/

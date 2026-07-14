@@ -23,6 +23,11 @@ COPY . .
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
+# Optional: provide a strong signing/encryption key via the environment instead
+# of storing it in config.json. If unset, the app generates a random one on
+# first boot. KPV_ALLOWED_ORIGINS may list external origins allowed via CORS.
+# ENV KPV_SECRET_KEY=""
+# ENV KPV_ALLOWED_ORIGINS=""
 
 EXPOSE 3007
 

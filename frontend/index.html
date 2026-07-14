@@ -1,118 +1,117 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KeePass Web Viewer | Team Tech</title>
+    <title>KeePass Web Viewer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23818cf8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='8' cy='15' r='4'/><line x1='10.85' y1='12.15' x2='19' y2='4'/><line x1='18' y1='5' x2='20' y2='7'/><line x1='15' y1='8' x2='17' y2='10'/></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=2.0">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=3.0">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div id="app">
         <header id="app-header" class="hidden">
-            <div class="logo" id="app-title-main" style="cursor:pointer; user-select:none">
+            <div class="logo" id="app-title-main">
                 KeePass<span>Viewer</span>
-                <div style="font-size: 0.6rem; color: var(--text-dim); font-weight: 400; margin-top: -3px; letter-spacing: 0;">By Eduardo Restrepo | v2.0</div>
             </div>
             <div class="user-info">
-                <span id="display-user">No autenticado</span>
-                <button id="config-btn" class="icon-btn hidden" title="Configuración"><i data-lucide="settings"></i></button>
-                <button id="lock-btn" class="icon-btn hidden" title="Cerrar Sesión"><i data-lucide="log-out"></i></button>
+                <button id="theme-btn" class="icon-btn" title="Cambiar tema" aria-label="Cambiar tema"><i data-lucide="moon"></i></button>
+                <span id="display-user" class="user-chip">No autenticado</span>
+                <button id="lock-db-btn" class="icon-btn hidden" title="Bloquear base de datos" aria-label="Bloquear base de datos"><i data-lucide="lock"></i></button>
+                <button id="config-btn" class="icon-btn hidden" title="Configuración" aria-label="Configuración"><i data-lucide="settings"></i></button>
+                <button id="lock-btn" class="icon-btn hidden" title="Cerrar sesión" aria-label="Cerrar sesión"><i data-lucide="log-out"></i></button>
             </div>
         </header>
 
         <!-- Login Screen -->
-        <div id="login-screen" class="screen">
+        <div id="login-screen" class="screen center-screen">
             <div class="glass-card login-card">
-                <div class="card-actions">
-                    <button id="config-btn-login" class="text-link-btn hidden" title="Configuración"><i data-lucide="settings"></i> Configuración</button>
-                </div>
-                <div class="logo" id="app-title" style="cursor:pointer; user-select:none">
-                    KeePass <span>Web Viewer</span>
-                    <div style="font-size: 0.65rem; color: var(--text-dim); font-weight: 400; margin-top: -5px;">By Eduardo Restrepo | v2.0</div>
-                </div>
-                <p>Acceso restringido para el equipo de tecnología</p>
+                <div class="brand-icon"><i data-lucide="key-round"></i></div>
+                <div class="logo">KeePass <span>Web Viewer</span></div>
+                <p class="subtitle">Acceso restringido para el equipo de tecnología</p>
                 <form id="login-form">
                     <div class="input-group">
-                        <label for="username">Usuario de Red</label>
-                        <input type="text" id="username" required placeholder="ej. jdoe">
+                        <label for="username">Usuario de red</label>
+                        <input type="text" id="username" required placeholder="ej. jdoe" autocomplete="username">
                     </div>
                     <div class="input-group">
                         <label for="password">Contraseña</label>
-                        <input type="password" id="password" required placeholder="••••••••">
+                        <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
                     </div>
-                    <button type="submit" class="btn-primary">Iniciar Sesión</button>
+                    <button type="submit" class="btn-primary">Iniciar sesión</button>
                 </form>
-                <div id="login-error" class="error-msg"></div>
+                <div id="login-error" class="error-msg" role="alert"></div>
             </div>
         </div>
 
         <!-- Master Password Screen -->
-        <div id="master-screen" class="screen hidden">
+        <div id="master-screen" class="screen center-screen hidden">
             <div class="glass-card login-card">
-                <div class="card-actions">
-                    <button id="config-btn-master" class="text-link-btn hidden" title="Configuración"><i data-lucide="settings"></i> Configuración</button>
-                </div>
+                <div class="brand-icon"><i data-lucide="database-lock"></i></div>
                 <h2>Archivo KeePass</h2>
-                <p>Introduce la contraseña maestra para desbloquear</p>
+                <p class="subtitle">Introduce la contraseña maestra para desbloquear</p>
                 <form id="master-form">
                     <div class="input-group">
-                        <label for="master-pass">Contraseña Maestra</label>
-                        <input type="password" id="master-pass" required placeholder="••••••••">
+                        <label for="master-pass">Contraseña maestra</label>
+                        <input type="password" id="master-pass" required placeholder="••••••••" autocomplete="off">
                     </div>
                     <button type="submit" class="btn-primary">Desbloquear</button>
-                    <button type="button" id="logout-btn" class="btn-secondary">Cerrar Sesión</button>
+                    <button type="button" id="logout-btn" class="btn-secondary">Cerrar sesión</button>
                 </form>
-                <div id="master-error" class="error-msg"></div>
+                <div id="master-error" class="error-msg" role="alert"></div>
             </div>
         </div>
 
         <div id="main-screen" class="screen hidden">
             <main>
-                <aside class="sidebar">
+                <aside class="sidebar" id="sidebar">
                     <div class="sidebar-header">
-                        <h3>Navegación</h3>
-                        <button id="add-group-btn" class="icon-btn small"><i data-lucide="folder-plus"></i></button>
+                        <h3>Grupos</h3>
+                        <button id="add-group-btn" class="icon-btn small" title="Nuevo grupo" aria-label="Nuevo grupo"><i data-lucide="folder-plus"></i></button>
                     </div>
-                    <div id="group-list" class="tree-container">
-                        <!-- Groups will be injected here -->
-                    </div>
+                    <div id="group-list" class="tree-container"></div>
                 </aside>
-                
+
                 <section class="content">
                     <div class="content-header">
                         <div class="title-area">
-                            <h2 id="current-group">Todas las Entradas</h2>
+                            <button id="sidebar-toggle" class="icon-btn small mobile-only" aria-label="Mostrar grupos"><i data-lucide="menu"></i></button>
+                            <h2 id="current-group">Todas las entradas</h2>
+                            <button id="del-group-btn" class="icon-btn small hidden" title="Eliminar grupo" aria-label="Eliminar grupo"><i data-lucide="trash-2"></i></button>
                         </div>
                         <div class="actions">
                             <div class="search-wrapper">
                                 <i data-lucide="search" class="search-icon"></i>
-                                <input type="text" id="search-input" placeholder="Buscar por título, usuario, url...">
+                                <input type="text" id="search-input" placeholder="Buscar por título, usuario, URL..." aria-label="Buscar">
                             </div>
-                            <button id="add-entry-btn" class="btn-primary">
-                                <i data-lucide="plus"></i> Nueva Entrada
-                            </button>
+                            <button id="add-entry-btn" class="btn-primary"><i data-lucide="plus"></i> Nueva entrada</button>
                         </div>
                     </div>
-                    
-                    <div class="entries-table-wrapper">
+
+                    <div id="loading-state" class="state-msg hidden">
+                        <div class="spinner"></div><span>Cargando entradas...</span>
+                    </div>
+                    <div id="empty-state" class="state-msg hidden">
+                        <i data-lucide="inbox"></i>
+                        <p>No hay entradas en este grupo</p>
+                    </div>
+
+                    <div class="entries-table-wrapper" id="table-wrapper">
                         <table id="entries-table">
                             <thead>
                                 <tr>
-                                    <th>Título</th>
-                                    <th>Usuario</th>
-                                    <th>Contraseña</th>
-                                    <th>URL</th>
-                                    <th>Acciones</th>
+                                    <th scope="col">Título</th>
+                                    <th scope="col">Usuario</th>
+                                    <th scope="col">Contraseña</th>
+                                    <th scope="col">URL</th>
+                                    <th scope="col" class="col-actions">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody id="entries-body">
-                                <!-- Entries will be injected here -->
-                            </tbody>
+                            <tbody id="entries-body"></tbody>
                         </table>
                     </div>
                 </section>
@@ -120,200 +119,192 @@
         </div>
 
         <!-- Admin Modal -->
-        <div id="admin-modal" class="modal hidden" style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:rgba(2,6,23,0.9); display:none; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
-            <div class="modal-content glass-card" style="max-width: 800px; width: 90%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; padding: 0;">
-                <div class="modal-header" style="padding: 30px 40px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                    <div style="display:flex; align-items:center; gap:15px">
-                        <div style="background:var(--primary-glow); padding:10px; border-radius:12px; color:var(--primary)">
-                            <i data-lucide="settings-2"></i>
-                        </div>
-                        <h2 style="margin:0; font-size:1.5rem">Configuración del Sistema</h2>
+        <div id="admin-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
+            <div class="modal-content glass-card admin-modal-content">
+                <div class="modal-header">
+                    <div class="modal-title-group">
+                        <div class="modal-title-icon"><i data-lucide="settings-2"></i></div>
+                        <h2 id="admin-modal-title">Configuración del sistema</h2>
                     </div>
-                    <button class="close-modal icon-btn"><i data-lucide="x"></i></button>
-                </div>
-                
-                <div class="modal-tabs">
-                    <button type="button" class="tab-btn active" data-tab="tab-general">General</button>
-                    <button type="button" class="tab-btn" data-tab="tab-ad">LDAP / AD</button>
-                    <button type="button" class="tab-btn" data-tab="tab-azure">Entra ID</button>
-                    <button type="button" class="tab-btn" data-tab="tab-system">Sistema</button>
+                    <button class="close-modal icon-btn" aria-label="Cerrar"><i data-lucide="x"></i></button>
                 </div>
 
-                <div class="modal-body" style="padding: 40px; overflow-y: auto; flex: 1;">
+                <div class="modal-tabs" role="tablist">
+                    <button type="button" class="tab-btn active" data-tab="tab-general" role="tab">General</button>
+                    <button type="button" class="tab-btn" data-tab="tab-ad" role="tab">LDAP / AD</button>
+                    <button type="button" class="tab-btn" data-tab="tab-azure" role="tab">Entra ID</button>
+                    <button type="button" class="tab-btn" data-tab="tab-system" role="tab">Sistema</button>
+                </div>
+
+                <div class="modal-body">
                     <form id="config-form">
-                        <!-- Tab General -->
                         <div id="tab-general" class="tab-pane active">
-                            <section class="config-section">
-                                <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
-                                    <i data-lucide="database" style="width:18px"></i> Base de Datos KeePass
-                                </h3>
-                                <div class="input-group">
-                                    <label>Ruta del Archivo .kdbx</label>
-                                    <input type="text" id="conf-file-path" name="keepass_file_path" placeholder="C:/ruta/al/archivo.kdbx">
-                                </div>
-                                <div class="input-group" style="margin-top: 25px; flex-direction: row; align-items: center; gap: 12px; cursor: pointer; user-select: none;">
-                                    <input type="checkbox" id="conf-save-keepass-password" name="save_keepass_password" value="true" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary); margin: 0;">
-                                    <div>
-                                        <label for="conf-save-keepass-password" style="font-weight: 600; color: var(--text); margin: 0; cursor: pointer;">Guardar contraseña maestra del KeePass</label>
-                                        <span style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-top: 2px;">Si se activa, los usuarios no tendrán que introducir la contraseña del KeePass al iniciar sesión.</span>
-                                    </div>
-                                </div>
-                                <div class="input-group" id="conf-keepass-password-wrapper" style="margin-top: 20px;">
-                                    <label for="conf-keepass-password">Nueva Contraseña Maestra del KeePass</label>
-                                    <input type="password" id="conf-keepass-password" name="keepass_password" placeholder="••••••••">
-                                    <span style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-top: 2px;">Solo rellena este campo para cambiar o establecer la contraseña guardada.</span>
-                                </div>
-                            </section>
+                            <h3 class="section-title"><i data-lucide="database"></i> Base de datos KeePass</h3>
+                            <div class="input-group">
+                                <label for="conf-file-path">Ruta del archivo .kdbx</label>
+                                <input type="text" id="conf-file-path" name="keepass_file_path" placeholder="/app/data/archivo.kdbx">
+                            </div>
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="conf-save-keepass-password" name="save_keepass_password" value="true">
+                                <span>
+                                    <strong>Guardar contraseña maestra del KeePass</strong>
+                                    <small>Los usuarios no tendrán que introducirla al iniciar sesión. Reduce la seguridad: úsalo solo si confías en todos los usuarios autorizados.</small>
+                                </span>
+                            </label>
+                            <div class="input-group">
+                                <label for="conf-keepass-password">Nueva contraseña maestra del KeePass</label>
+                                <input type="password" id="conf-keepass-password" name="keepass_password" placeholder="••••••••" autocomplete="off">
+                                <small>Rellénalo solo para cambiar o establecer la contraseña guardada.</small>
+                            </div>
                         </div>
 
-                        <!-- Tab AD -->
                         <div id="tab-ad" class="tab-pane">
-                            <section class="config-section">
-                                <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
-                                    <i data-lucide="network" style="width:18px"></i> Autenticación Local (AD/LDAP)
-                                </h3>
-                                <div class="grid-2">
-                                    <div class="input-group">
-                                        <label>Servidor AD (LDAP)</label>
-                                        <input type="text" id="conf-ad-server" name="ad_server" placeholder="ldap://server:389">
-                                    </div>
-                                    <div class="input-group">
-                                        <label>Dominio AD</label>
-                                        <input type="text" id="conf-ad-domain" name="ad_domain" placeholder="DOMAIN">
-                                    </div>
+                            <h3 class="section-title"><i data-lucide="network"></i> Autenticación local (AD/LDAP)</h3>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label for="conf-ad-server">Servidor AD (LDAP)</label>
+                                    <input type="text" id="conf-ad-server" name="ad_server" placeholder="ldaps://server:636">
                                 </div>
                                 <div class="input-group">
-                                    <label>Grupo AD Requerido (Nombre o DN)</label>
-                                    <input type="text" id="conf-ad-group" name="ad_group" placeholder="CN=KeePassUsers,OU=Groups,DC=domain,DC=com">
+                                    <label for="conf-ad-domain">Dominio AD</label>
+                                    <input type="text" id="conf-ad-domain" name="ad_domain" placeholder="DOMAIN">
                                 </div>
-                                <div class="test-config-box" style="margin-top:20px; padding:20px; background:rgba(255,255,255,0.03); border-radius:12px; border:1px solid var(--border);">
-                                    <h4 style="margin:0 0 15px 0; font-size:0.9rem; color:var(--text-dim)">Probar Configuración AD</h4>
-                                    <div class="grid-2">
-                                        <div class="input-group">
-                                            <label>Usuario de prueba</label>
-                                            <input type="text" id="test-ad-user" placeholder="usuario">
-                                        </div>
-                                        <div class="input-group">
-                                            <label>Contraseña de prueba</label>
-                                            <input type="password" id="test-ad-pass" placeholder="••••••••">
-                                        </div>
+                            </div>
+                            <div class="input-group">
+                                <label for="conf-ad-group">Grupo AD requerido (nombre o DN)</label>
+                                <input type="text" id="conf-ad-group" name="ad_group" placeholder="CN=KeePassUsers,OU=Groups,DC=domain,DC=com">
+                            </div>
+                            <div class="test-box">
+                                <h4>Probar configuración AD</h4>
+                                <div class="grid-2">
+                                    <div class="input-group">
+                                        <label for="test-ad-user">Usuario de prueba</label>
+                                        <input type="text" id="test-ad-user" placeholder="usuario" autocomplete="off">
                                     </div>
-                                    <button type="button" id="test-ad-btn" class="btn-secondary" style="width:100%; margin-top:10px">
-                                        <i data-lucide="activity" style="width:16px; margin-right:8px; vertical-align:middle"></i> Comprobar Conexión Local
-                                    </button>
-                                    <div id="test-ad-result" style="margin-top:10px; font-size:0.85rem; padding:10px; border-radius:8px; display:none"></div>
+                                    <div class="input-group">
+                                        <label for="test-ad-pass">Contraseña de prueba</label>
+                                        <input type="password" id="test-ad-pass" placeholder="••••••••" autocomplete="off">
+                                    </div>
                                 </div>
-                            </section>
+                                <button type="button" id="test-ad-btn" class="btn-secondary full"><i data-lucide="activity"></i> Comprobar conexión</button>
+                                <div id="test-ad-result" class="test-result hidden"></div>
+                            </div>
                         </div>
 
-                        <!-- Tab Azure -->
                         <div id="tab-azure" class="tab-pane">
-                            <section class="config-section">
-                                <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
-                                    <i data-lucide="cloud" style="width:18px"></i> Microsoft Entra ID (Azure AD)
-                                </h3>
-                                <div class="grid-2">
-                                    <div class="input-group">
-                                        <label>Tenant ID</label>
-                                        <input type="text" id="conf-azure-tenant" name="azure_tenant_id" placeholder="0000-0000-0000-0000">
-                                    </div>
-                                    <div class="input-group">
-                                        <label>Client ID</label>
-                                        <input type="text" id="conf-azure-client" name="azure_client_id" placeholder="0000-0000-0000-0000">
-                                    </div>
+                            <h3 class="section-title"><i data-lucide="cloud"></i> Microsoft Entra ID (Azure AD)</h3>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label for="conf-azure-tenant">Tenant ID</label>
+                                    <input type="text" id="conf-azure-tenant" name="azure_tenant_id" placeholder="0000-0000-0000-0000">
                                 </div>
-                                <div class="grid-2">
-                                    <div class="input-group">
-                                        <label>Client Secret</label>
-                                        <input type="password" id="conf-azure-secret" name="azure_client_secret" placeholder="••••••••">
-                                    </div>
-                                    <div class="input-group">
-                                        <label>Entra Group ID (Object ID)</label>
-                                        <input type="text" id="conf-azure-group" name="azure_group_id" placeholder="b6f492a4-a9b2-405f-8a5b-ec7fb5642416">
-                                    </div>
+                                <div class="input-group">
+                                    <label for="conf-azure-client">Client ID</label>
+                                    <input type="text" id="conf-azure-client" name="azure_client_id" placeholder="0000-0000-0000-0000">
                                 </div>
-                            </section>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label for="conf-azure-secret">Client Secret</label>
+                                    <input type="password" id="conf-azure-secret" name="azure_client_secret" placeholder="••••••••" autocomplete="off">
+                                </div>
+                                <div class="input-group">
+                                    <label for="conf-azure-group">Entra Group ID (Object ID)</label>
+                                    <input type="text" id="conf-azure-group" name="azure_group_id" placeholder="b6f492a4-...">
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Tab System -->
                         <div id="tab-system" class="tab-pane">
-                            <section class="config-section">
-                                <h3 style="margin-bottom:20px; font-size:1rem; color:var(--primary); display:flex; align-items:center; gap:10px">
-                                    <i data-lucide="shield-check" style="width:18px"></i> Administración del Sistema
-                                </h3>
-                                <div class="grid-2">
-                                    <div class="input-group">
-                                        <label>Usuario Admin</label>
-                                        <input type="text" id="conf-admin-user" name="admin_user">
-                                    </div>
-                                    <div class="input-group">
-                                        <label>Nueva Contraseña Admin</label>
-                                        <input type="password" id="conf-admin-pass" name="admin_pass">
-                                    </div>
+                            <h3 class="section-title"><i data-lucide="shield-check"></i> Administración del sistema</h3>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label for="conf-admin-user">Usuario admin</label>
+                                    <input type="text" id="conf-admin-user" name="admin_user" autocomplete="off">
                                 </div>
-                            </section>
+                                <div class="input-group">
+                                    <label for="conf-admin-pass">Nueva contraseña admin</label>
+                                    <input type="password" id="conf-admin-pass" name="admin_pass" placeholder="(sin cambios)" autocomplete="new-password">
+                                </div>
+                            </div>
+                            <p class="hint"><i data-lucide="info"></i> Las contraseñas se almacenan con hash Argon2 y los secretos se cifran. Nunca se devuelven al navegador.</p>
                         </div>
                     </form>
                 </div>
 
-                <div class="modal-footer" style="padding: 30px 40px; border-top: 1px solid var(--border); display: flex; gap: 15px; background: rgba(0,0,0,0.2);">
-                    <button type="button" id="export-btn" class="btn-secondary" style="margin-top:0; flex:1">
-                        <i data-lucide="download" style="width:18px; margin-right:8px; vertical-align: middle;"></i> Exportar Backup .kdbx
-                    </button>
-                    <button type="submit" form="config-form" class="btn-primary" style="margin-top:0; flex:2">Guardar Cambios en la Configuración</button>
+                <div class="modal-footer">
+                    <button type="button" id="export-btn" class="btn-secondary"><i data-lucide="download"></i> Exportar backup</button>
+                    <button type="submit" form="config-form" class="btn-primary">Guardar cambios</button>
                 </div>
             </div>
         </div>
 
         <!-- Entry Modal -->
-        <div id="entry-modal" class="modal hidden">
+        <div id="entry-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="entry-modal-title">
             <div class="modal-content glass-card">
                 <div class="modal-header">
-                    <h2 id="entry-modal-title">Nueva Entrada</h2>
-                    <button class="close-modal"><i data-lucide="x"></i></button>
+                    <h2 id="entry-modal-title">Nueva entrada</h2>
+                    <button class="close-modal icon-btn" aria-label="Cerrar"><i data-lucide="x"></i></button>
                 </div>
                 <form id="entry-form">
                     <input type="hidden" id="entry-uuid">
                     <div class="grid-2">
                         <div class="input-group">
-                            <label>Título</label>
+                            <label for="entry-title">Título</label>
                             <input type="text" id="entry-title" required>
                         </div>
                         <div class="input-group">
-                            <label>URL</label>
+                            <label for="entry-url">URL</label>
                             <input type="text" id="entry-url">
                         </div>
                     </div>
                     <div class="grid-2">
                         <div class="input-group">
-                            <label>Usuario</label>
-                            <input type="text" id="entry-username" required>
+                            <label for="entry-username">Usuario</label>
+                            <input type="text" id="entry-username" required autocomplete="off">
                         </div>
                         <div class="input-group">
-                            <label>Contraseña</label>
+                            <label for="entry-password">Contraseña</label>
                             <div class="pass-wrapper">
-                                <input type="password" id="entry-password" required>
-                                <button type="button" id="toggle-entry-pass" class="toggle-btn"><i data-lucide="eye"></i></button>
+                                <input type="password" id="entry-password" autocomplete="new-password">
+                                <button type="button" id="reveal-entry-pass" class="toggle-btn" title="Mostrar guardada" aria-label="Mostrar contraseña guardada"><i data-lucide="key"></i></button>
+                                <button type="button" id="toggle-entry-pass" class="toggle-btn" aria-label="Mostrar/ocultar"><i data-lucide="eye"></i></button>
                             </div>
-                            <div class="strength-meter">
-                                <div id="strength-bar" class="strength-bar"></div>
-                            </div>
+                            <div class="strength-meter"><div id="strength-bar" class="strength-bar"></div></div>
+                            <small id="strength-label" class="strength-label"></small>
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Notas</label>
-                        <textarea id="entry-notes"></textarea>
+                        <label for="entry-group">Grupo</label>
+                        <select id="entry-group"></select>
+                    </div>
+                    <div class="input-group">
+                        <label for="entry-notes">Notas</label>
+                        <textarea id="entry-notes" rows="3"></textarea>
                     </div>
                     <div class="button-row">
-                        <button type="submit" class="btn-primary">Guardar Entrada</button>
-                        <button type="button" id="delete-entry-btn" class="btn-danger hidden">Eliminar</button>
-                        <button type="button" id="gen-pass-btn" class="btn-secondary">Generar Clave</button>
+                        <button type="button" id="gen-pass-btn" class="btn-secondary"><i data-lucide="dice-5"></i> Generar</button>
+                        <button type="button" id="delete-entry-btn" class="btn-danger hidden"><i data-lucide="trash-2"></i> Eliminar</button>
+                        <button type="submit" class="btn-primary">Guardar</button>
                     </div>
                 </form>
             </div>
         </div>
+
+        <!-- Confirm dialog -->
+        <div id="confirm-modal" class="modal hidden" role="dialog" aria-modal="true">
+            <div class="modal-content glass-card confirm-card">
+                <h3 id="confirm-text">¿Confirmar?</h3>
+                <div class="button-row">
+                    <button type="button" id="confirm-cancel" class="btn-secondary">Cancelar</button>
+                    <button type="button" id="confirm-ok" class="btn-danger">Confirmar</button>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <div id="toast-container" aria-live="polite"></div>
     <div id="easter-egg-container" class="hidden"></div>
-    <script src="script.js?v=2.1"></script>
+    <script src="script.js?v=3.0"></script>
 </body>
 </html>

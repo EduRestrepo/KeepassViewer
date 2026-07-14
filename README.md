@@ -1,13 +1,24 @@
-# KeePass Web Viewer v2.0
+# KeePass Web Viewer v3.0
 
 Visualizador web moderno y seguro para archivos de base de datos KeePass (.kdbx), diseñado para equipos de tecnología con integración de Active Directory y SharePoint.
 
 ## 🚀 Características
-- **Autenticación AD/LDAP**: Validación de usuarios y grupos contra Active Directory (NTLM).
+- **Autenticación AD/LDAP**: Validación de usuarios y grupos contra Active Directory (NTLM/Simple), con cuenta de administrador local de respaldo.
+- **Autenticación Entra ID (Azure AD)**: Flujo ROPC con comprobación de pertenencia a grupo.
 - **Integración SharePoint**: Sincronización en tiempo real mediante volúmenes de Docker y OneDrive.
-- **Seguridad**: Soporte para algoritmos legacy (NTLM/MD4) mediante configuración de OpenSSL.
-- **Diseño Premium**: Interfaz responsive con modo oscuro y estética "Glassmorphism".
+- **Diseño responsive**: Tema claro/oscuro, estética "Glassmorphism", notificaciones toast y vista en tarjetas en móvil.
 - **Easter Egg**: Presiona 7 veces el título principal para activar el modo "HACKED".
+
+## 🔒 Seguridad (v3.0)
+- **Clave secreta robusta**: el `secret_key` se genera aleatoriamente en el primer arranque si detecta un valor por defecto. Puede fijarse vía la variable de entorno `KPV_SECRET_KEY` (recomendado en producción). Los secretos existentes se vuelven a cifrar automáticamente al rotar la clave.
+- **Contraseña de admin con hash Argon2** (ya no se guarda en claro).
+- **Las contraseñas de las entradas no se envían en bloque** al navegador: se solicitan de forma individual y bajo demanda (`/api/keepass/entries/{uuid}/password`) y cada acceso queda registrado.
+- **Registro de auditoría** (`backend/audit.log`): inicios de sesión, desbloqueo/bloqueo, accesos a contraseñas y cambios.
+- **CORS restringido** (configurable con `KPV_ALLOWED_ORIGINS`) y **límite de intentos de login**.
+- **Bloqueo de la base de datos** desde la cabecera y por inactividad (15 min).
+- `backend/config.json` y los `.kdbx` están fuera del control de versiones. **Rota cualquier secreto que haya estado en el historial de Git.**
+
+> ⚠️ Sirve la aplicación detrás de TLS (proxy inverso) y usa **LDAPS (puerto 636)** para no enviar credenciales en claro por la red.
 
 ## 🛠️ Configuración de SharePoint
 Para utilizar una base de datos alojada en SharePoint:
